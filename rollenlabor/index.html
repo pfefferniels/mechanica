@@ -69,6 +69,15 @@ footer { font-size: 12px; border-top: 1px solid var(--rule); padding-top: 10px; 
 @media (max-width: 760px) {
   .measure { grid-template-columns: minmax(0, 1fr); }
 }
+.stage { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button, select, input { touch-action: manipulation; }
+#overview, #ruler, #curves { touch-action: pan-y; }
+@media (pointer: coarse) {
+  button, select { min-height: 40px; }
+  input[type="checkbox"] { width: 22px; height: 22px; }
+  #ruler { height: 34px; }
+  #overview { height: 48px; }
+}
 </style>
 
 <main>
@@ -104,8 +113,8 @@ footer { font-size: 12px; border-top: 1px solid var(--rule); padding-top: 10px; 
 
   <section class="measure" aria-label="Messung">
     <div>
-      <p class="hint">Klick auf ein Loch setzt eine Marke an seinem Anfang, mit gedrückter Wahltaste (Alt) an seinem Ende. Klick auf freies Papier setzt eine Marke an der Stelle, Klick auf eine Marke entfernt sie. Zwischen zwei Marken stehen Abstand und Zeit auf dem Scan.</p>
-      <p class="hint">Ziehen verschiebt den Ausschnitt, das Mausrad fährt die Rolle entlang, mit Strg oder ⌘ zoomt es. Leertaste: Abspielen, Rücktaste: letzte Marke löschen. Abstände unter 1&nbsp;mm liegen in der Stanzgenauigkeit (Gottschewski 1996).</p>
+      <p class="hint">Klick oder Tippen auf ein Loch setzt eine Marke an seinem Anfang, mit gedrückter Wahltaste (Alt) oder langem Drücken an seinem Ende. Klick auf freies Papier setzt eine Marke an der Stelle, Klick auf eine Marke entfernt sie. Zwischen zwei Marken stehen Abstand und Zeit auf dem Scan.</p>
+      <p class="hint">Ziehen verschiebt den Ausschnitt, das Mausrad fährt die Rolle entlang, mit Strg oder ⌘ zoomt es; auf dem Tablet zoomen zwei Finger. Leertaste: Abspielen, Rücktaste: letzte Marke löschen. Abstände unter 1&nbsp;mm liegen in der Stanzgenauigkeit (Gottschewski 1996).</p>
       <div>letzter Abstand</div>
       <div class="big" id="last-distance">–</div>
       <div class="bar">
@@ -655,11 +664,11 @@ function requestDraw() {
 }
 
 /* ---------- hit testing and the info line ---------- */
-function holeAt(x, y) {
+function holeAt(x, y, slackPx = 3) {
   const roll = state.roll;
   const mm = mmOfX(x);
   const across = acrossOfY(y);
-  const slackMm = 3 / state.view.s;
+  const slackMm = slackPx / state.view.s;
   const reach = holeHeightMm(roll) / 2 + slackMm;
   const hits = roll.holeList.filter((hole) => mm >= hole.on - slackMm && mm <= hole.off + slackMm && Math.abs(hole.across - across) <= reach);
   return hits.reduce((best, hole) => (!best || Math.abs(hole.across - across) < Math.abs(best.across - across) ? hole : best), null);
@@ -681,7 +690,7 @@ function renderInfo() {
   const hole = state.hover ?? (state.selected === null ? null : state.roll.holeList[state.selected]);
   els.info.textContent = hole
     ? describeHole(hole)
-    : `Spurleiste bei ${mm1(state.cursorMm)} mm · ${clock(secondsAtMm(state.roll, state.cursorMm))}. Zeiger auf ein Loch zeigt Taste oder Spur, Anfang, Länge und Balgweg.`;
+    : `Spurleiste bei ${mm1(state.cursorMm)} mm · ${clock(secondsAtMm(state.roll, state.cursorMm))}. Zeiger auf oder Tippen auf ein Loch zeigt Taste oder Spur, Anfang, Länge und Balgweg.`;
 }
 
 /* ---------- marks ---------- */
@@ -878,26 +887,66 @@ const local = (event, canvas) => {
   return { x: event.clientX - box.left, y: event.clientY - box.top };
 };
 
+const LONG_PRESS_MS = 450;
+const isTouch = (event) => event.pointerType === "touch" || event.pointerType === "pen";
+const midpoint = ([a, b]) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const spread = ([a, b]) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function pinchStart(canvas, points) {
+  const box = canvas.getBoundingClientRect();
+  const mid = midpoint(points);
+  const local = { x: mid.x - box.left, y: canvas === els.roll ? mid.y - box.top : els.roll.clientHeight / 2 };
+  return { spread: spread(points), mm: mmOfX(local.x), across: acrossOfY(local.y) };
+}
+
+// Keeps the paper point that started under the fingers' midpoint under it.
+function pinchTo(canvas, pinch, points) {
+  const box = canvas.getBoundingClientRect();
+  const mid = midpoint(points);
+  const y = canvas === els.roll ? mid.y - box.top : els.roll.clientHeight / 2;
+  const scale = clamp(state.view.s * spread(points) / pinch.spread, fitScale(), MAX_PX_PER_MM);
+  pinch.spread = spread(points);
+  els.zoom.value = String(sliderOfScale(scale));
+  setView(pinch.mm - (mid.x - box.left) / scale, pinch.across - y / scale, scale);
+}
+
 function bindDrag(canvas, { onPan, onClick, onHover }) {
-  const drag = { active: false, moved: false, x: 0, y: 0, view: null };
+  const drag = { active: false, moved: false, x: 0, y: 0, t: 0, view: null, pinch: null };
+  const pointers = new Map();
+  const points = () => [...pointers.values()];
+  const restartDrag = (event) => Object.assign(drag, { x: event.clientX, y: event.clientY, view: { ...state.view } });
   canvas.addEventListener("pointerdown", (event) => {
-    Object.assign(drag, { active: true, moved: false, x: event.clientX, y: event.clientY, view: { ...state.view } });
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     canvas.setPointerCapture(event.pointerId);
+    if (pointers.size === 2) { Object.assign(drag, { moved: true, pinch: pinchStart(canvas, points()) }); return; }
+    if (pointers.size > 2) return;
+    Object.assign(drag, { active: true, moved: false, t: event.timeStamp, pinch: null });
+    restartDrag(event);
   });
   canvas.addEventListener("pointermove", (event) => {
-    if (!drag.active) { onHover?.(event); return; }
+    if (!pointers.has(event.pointerId)) { if (!isTouch(event)) onHover?.(event); return; }
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (drag.pinch) { pinchTo(canvas, drag.pinch, points()); return; }
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
-    if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+    if (Math.abs(dx) + Math.abs(dy) > (isTouch(event) ? 10 : 4)) drag.moved = true;
     if (drag.moved) { canvas.classList.add("panning"); onPan(dx, dy, drag.view, event); }
   });
-  canvas.addEventListener("pointerup", (event) => {
-    if (drag.active && !drag.moved) onClick(event);
-    drag.active = false;
+  const release = (event, cancelled) => {
+    if (!pointers.delete(event.pointerId)) return;
+    if (!cancelled && drag.active && !drag.moved && pointers.size === 0) onClick(event, event.timeStamp - drag.t >= LONG_PRESS_MS);
+    if (pointers.size === 1) {
+      drag.pinch = null;
+      restartDrag({ clientX: points()[0].x, clientY: points()[0].y });
+      return;
+    }
+    if (pointers.size === 0) Object.assign(drag, { active: false, pinch: null });
     canvas.classList.remove("panning");
-  });
-  canvas.addEventListener("pointercancel", () => { drag.active = false; canvas.classList.remove("panning"); });
-  canvas.addEventListener("pointerleave", () => onHover?.(null));
+  };
+  canvas.addEventListener("pointerup", (event) => release(event, false));
+  canvas.addEventListener("pointercancel", (event) => release(event, true));
+  canvas.addEventListener("pointerleave", (event) => { if (!isTouch(event)) onHover?.(null); });
+  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
 function bindWheel(canvas) {
@@ -920,15 +969,16 @@ function bindWheel(canvas) {
 const panAlong = (dx, dy, view) => setView(view.x0 - dx / view.s, view.y0, view.s);
 const panBoth = (dx, dy, view) => setView(view.x0 - dx / view.s, view.y0 - dy / view.s, view.s);
 
-function clickRoll(event) {
+function clickRoll(event, held) {
   const { x, y } = local(event, els.roll);
-  const markHit = state.marks.findIndex((mark) => Math.abs(xOfMm(mark.mm) - x) <= HIT_PX);
+  const fingers = isTouch(event) ? 3 : 1;
+  const markHit = state.marks.findIndex((mark) => Math.abs(xOfMm(mark.mm) - x) <= HIT_PX * fingers);
   if (markHit >= 0) { setMarks(state.marks.filter((_, index) => index !== markHit)); return; }
-  const hole = holeAt(x, y);
+  const hole = holeAt(x, y, 3 * fingers);
   state.selected = hole ? hole.index : null;
   renderInfo();
   if (!hole) { toggleMarkAt(mmOfX(x), null); return; }
-  const atEnd = event.altKey;
+  const atEnd = event.altKey || held;
   toggleMarkAt(atEnd ? hole.off : hole.on, `${holeName(hole)}, ${atEnd ? "Ende" : "Anfang"}`);
 }
 
