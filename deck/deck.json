@@ -48,6 +48,8 @@
     "komp-1",
     "komp-2",
     "widmung-1755",
+    "aufnahmerolle",
+    "aufnahmerolle-2",
     "bauformen",
     "dm-instrument",
     "k17",
@@ -140,8 +142,8 @@
     },
     "s1": {
       "before": null,
-      "description": "Wie die Welte-Mignon funktioniert: Bauformen (Flügel, Klavier, Kabinett, Vorsetzer), Welte-Piano im Deutschen Museum, Rolle, Gleitblock, Ventile, Nuancierbalg, Anschlag",
-      "start": "bauformen"
+      "description": "Wie die Welte-Mignon funktioniert: Aufnahmeapparat und Aufnahmerolle (Philharmonie-Orgel), Bauformen (Flügel, Klavier, Kabinett, Vorsetzer), Welte-Piano im Deutschen Museum, Rolle, Gleitblock, Ventile, Nuancierbalg, Anschlag",
+      "start": "aufnahmerolle"
     },
     "s2": {
       "description": "Leseregeln T-100: Abb. 5 und 6 Schritt für Schritt",
