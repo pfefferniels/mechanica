@@ -1,0 +1,988 @@
+<title>Rollenlabor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one working column; the scan of the roll as the working surface, a whole-roll strip above it, the bellows curves under it on the same mm axis, then the marks. */
+:root {
+  --bg: #ffffff;
+  --fg: #000000;
+  --rule: #e5e7eb;
+  --fill: #f3f4f6;
+  --bass: #1d4ed8;
+  --treble: #c2410c;
+  --hi: #facc15;
+  --font: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 24px;
+}
+main { display: flex; flex-direction: column; gap: 12px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.bar label { display: flex; align-items: center; gap: 8px; }
+select, button, input { font: inherit; color: var(--fg); }
+select, button {
+  background: var(--bg);
+  border: 1px solid var(--fg);
+  border-radius: 3px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.bar label { min-width: 0; max-width: 100%; }
+select { min-width: 0; max-width: 100%; }
+button:hover, select:hover { background: var(--fill); }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--bass); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.readout { font-variant-numeric: tabular-nums; }
+.about { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.about a, footer a { color: var(--fg); }
+.stage { display: flex; flex-direction: column; border: 1px solid var(--rule); }
+.stage canvas { display: block; width: 100%; }
+#overview { height: 40px; cursor: pointer; border-bottom: 1px solid var(--rule); touch-action: none; }
+#ruler { height: 26px; cursor: pointer; border-bottom: 1px solid var(--rule); touch-action: none; }
+#roll { height: clamp(300px, 56vh, 600px); cursor: crosshair; touch-action: none; }
+#roll.on-hole { cursor: pointer; }
+#roll.panning { cursor: grabbing; }
+#curves { height: 150px; border-top: 1px solid var(--rule); cursor: crosshair; touch-action: none; }
+.info { min-height: 2.9em; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; }
+.swatch { display: inline-block; width: 18px; height: 10px; vertical-align: middle; margin-right: 6px; border: 1px solid var(--fg); }
+.measure { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px 32px; align-items: start; }
+.measure > div { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.big { font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow: auto; max-height: 320px; border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 3px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--fill); font-weight: 500; }
+td.text, th.text { text-align: left; }
+td input { width: 100%; min-width: 14ch; border: 1px solid var(--rule); padding: 2px 6px; background: var(--bg); }
+td button { padding: 0 7px; }
+.hint { margin: 0; max-width: 72ch; }
+footer { font-size: 12px; border-top: 1px solid var(--rule); padding-top: 10px; max-width: 110ch; }
+@media (max-width: 760px) {
+  .measure { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+
+<main>
+  <div class="bar">
+    <label for="roll-select">Rolle <select id="roll-select"></select></label>
+    <button id="play" type="button" aria-pressed="false">Abspielen</button>
+    <span class="readout" id="clock">0:00,0</span>
+    <label for="zoom">Zoom <input id="zoom" type="range" min="0" max="100" value="0"></label>
+    <span class="readout" id="zoom-readout"></span>
+    <button id="to-leader" type="button">Vorspann mit Etikett</button>
+    <button id="to-start" type="button">Erstes Loch</button>
+    <label for="show-holes"><input id="show-holes" type="checkbox" checked> Ausdruckslöcher färben</label>
+    <label for="show-labels"><input id="show-labels" type="checkbox" checked> Spuren beschriften</label>
+  </div>
+
+  <div class="about" id="about"></div>
+
+  <div class="stage">
+    <canvas id="overview" aria-label="Ganze Rolle; Klick oder Ziehen wählt den Ausschnitt"></canvas>
+    <canvas id="ruler" aria-label="Maßstab in Millimetern ab dem ersten Loch; Klick setzt die Spurleiste dorthin"></canvas>
+    <canvas id="roll" tabindex="0" aria-label="Scan der Rolle; Klick auf ein Loch setzt eine Marke an seinem Anfang"></canvas>
+    <canvas id="curves" aria-label="Balgweg Bass und Diskant"></canvas>
+  </div>
+
+  <div class="info" id="info" role="status"></div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background: var(--bass)"></span>Bass: Ausdrucksspuren und Balgweg</span>
+    <span><span class="swatch" style="background: var(--treble)"></span>Diskant: Ausdrucksspuren und Balgweg</span>
+    <span><span class="swatch" style="background: var(--hi)"></span>Löcher über der Spurleiste, gewähltes Loch</span>
+    <span>gestrichelt im Balgweg: Mezzoforte-Haken</span>
+  </div>
+
+  <section class="measure" aria-label="Messung">
+    <div>
+      <p class="hint">Klick auf ein Loch setzt eine Marke an seinem Anfang, mit gedrückter Wahltaste (Alt) an seinem Ende. Klick auf freies Papier setzt eine Marke an der Stelle, Klick auf eine Marke entfernt sie. Zwischen zwei Marken stehen Abstand und Zeit auf dem Scan.</p>
+      <p class="hint">Ziehen verschiebt den Ausschnitt, das Mausrad fährt die Rolle entlang, mit Strg oder ⌘ zoomt es. Leertaste: Abspielen, Rücktaste: letzte Marke löschen. Abstände unter 1&nbsp;mm liegen in der Stanzgenauigkeit (Gottschewski 1996).</p>
+      <div>letzter Abstand</div>
+      <div class="big" id="last-distance">–</div>
+      <div class="bar">
+        <button id="copy" type="button">Tabelle kopieren</button>
+        <button id="clear" type="button">Alle Marken löschen</button>
+        <span id="copy-status" role="status"></span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Marke</th><th class="text">Bezug</th><th>Position mm</th><th>Δ mm</th><th>Δ s (Emulation)</th><th class="text">Notiz</th><th><span hidden>Entfernen</span></th></tr></thead>
+        <tbody id="marks"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Faksimile: Scans der Stanford University Libraries, Denis Condon Collection, über den IIIF-Dienst der Bibliothek, hier in halber Auflösung gekachelt; der Scan jeder Rolle ist oben verlinkt.
+    Lochungen aus SUPRA, ermittelt mit <a href="https://github.com/pianoroll/roll-image-parser">roll-image-parser</a>; die Lage der Spuren ist für jede Rolle an den Scan angepasst.
+    Balgweg und Zeitachse: Niels Pfeffer, <a href="https://github.com/pfefferniels/welte-t100">welte-mignon-emulator</a> (Konsens-Instrument; Rollenbeschleunigung nach Gottschewski 1996, S. 135–137);
+    Anschlagstärken nach <a href="https://github.com/pfefferniels/linked-rolls">linked-rolls</a> (velocityOf).
+    Der Klang ist ein FluidSynth-Rendering dieser Emulation, keine Aufnahme eines Instruments.
+    Balgweg 0 = offen (leisester Anschlag), 1 = geschlossen (lautester); die gedruckte Skala der Nuancierlinien weicht davon ab.
+    Spurnamen der Ausdrucksspuren nach Hagmann; Notizen bleiben nur in diesem Browser gespeichert.
+  </footer>
+</main>
+
+<audio id="audio" preload="auto"></audio>
+
+<script>
+"use strict";
+
+const TRACKS = { lowest: 14, bassExpression: 23, trebleExpression: 104, highest: 113, highestBass: 66 };
+const CODES = {
+  14: ["bass", "mezzoforte", "off"], 15: ["bass", "mezzoforte", "on"], 16: ["bass", "crescendo", "off"],
+  17: ["bass", "crescendo", "on"], 18: ["bass", "sforzando", "off"], 19: ["bass", "sforzando", "on"],
+  20: ["bass", "hammerRail", "off"], 21: ["bass", "hammerRail", "on"], 22: ["bass", "windResistance", "off"],
+  23: ["bass", "windResistance", "on"],
+  104: ["treble", "rewind", "on"], 105: ["treble", "electricCutoff", "on"], 106: ["treble", "sustainPedal", "on"],
+  107: ["treble", "sustainPedal", "off"], 108: ["treble", "sforzando", "on"], 109: ["treble", "sforzando", "off"],
+  110: ["treble", "crescendo", "on"], 111: ["treble", "crescendo", "off"], 112: ["treble", "mezzoforte", "on"],
+  113: ["treble", "mezzoforte", "off"],
+};
+const CONTROL_NAMES = {
+  mezzoforte: "Mezzoforte", crescendo: "Crescendo", sforzando: "Sforzando", hammerRail: "Hammerleiste",
+  windResistance: "Widerstand", sustainPedal: "Pedal", rewind: "Rücklauf", electricCutoff: "Abstellen",
+};
+const PITCH_NAMES = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "h"];
+const MAX_PX_PER_MM = 16;
+const HIT_PX = 5;
+const LABEL_PITCH_PX = 11;
+const CACHE_LIMIT = 14;
+const COLORS = Object.fromEntries(["bg", "fg", "rule", "fill", "bass", "treble", "hi"]
+  .map((name) => [name, getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim()]));
+
+const els = Object.fromEntries(["roll-select", "play", "clock", "zoom", "zoom-readout", "to-leader", "to-start", "show-holes",
+  "show-labels", "about", "overview", "ruler", "roll", "curves", "info", "last-distance", "copy", "clear", "copy-status",
+  "marks", "audio"].map((id) => [id, document.getElementById(id)]));
+
+const state = {
+  roll: null, view: { x0: 0, y0: 0, s: 1 }, marks: [], cursorMm: 0, playing: false, audioUrl: null,
+  hover: null, selected: null, drawQueued: false,
+};
+
+/* ---------- numbers and names ---------- */
+const clamp = (x, low, high) => Math.min(Math.max(x, low), high);
+const mm1 = (x) => x.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const s3 = (x) => x.toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const travel2 = (x) => x.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toLocaleString("de-DE", { minimumIntegerDigits: 2, minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+const capitalised = (text) => text[0].toUpperCase() + text.slice(1);
+
+function noteName(key) {
+  const name = PITCH_NAMES[key % 12];
+  const octave = Math.floor(key / 12) - 1;
+  if (octave === 1) return `${capitalised(name)}₁`;
+  if (octave === 2) return capitalised(name);
+  return `${name}${"'".repeat(Math.max(0, octave - 3))}`;
+}
+
+const codeOf = (key) => {
+  const code = CODES[key];
+  return code ? { half: code[0], control: code[1], action: code[2] } : null;
+};
+const halfName = (half) => (half === "bass" ? "Bass" : "Diskant");
+const halfOfNote = (key) => (key <= TRACKS.highestBass ? "bass" : "treble");
+const codeName = (code) => `${CONTROL_NAMES[code.control]} ${code.action === "on" ? "an" : "ab"}`;
+const OCTAVE_KEYS = [24, 36, 48, 60, 72, 84, 96];
+const HOLE_RIM_MM = 0.15;
+
+function holeName(hole) {
+  const code = codeOf(hole.key);
+  return code ? `${halfName(code.half)} ${codeName(code)}` : noteName(hole.key);
+}
+
+// Gives each span the lowest lane in which it does not run into the span before it.
+function lanesFor(spans) {
+  return spans.reduce(({ ends, lanes }, { from, to }) => {
+    const free = ends.findIndex((end) => end + 4 < from);
+    const lane = free >= 0 ? free : ends.length;
+    return { ends: Object.assign([...ends], { [lane]: to }), lanes: [...lanes, lane] };
+  }, { ends: [], lanes: [] }).lanes;
+}
+
+/* ---------- roll geometry: mm along the roll from the first hole, mm across from the treble edge of the scan ---------- */
+const acrossMm = (roll) => roll.scan.imageWidth / roll.rowsPerMm;
+const mmOfRow = (roll, row) => (row - roll.scan.firstHole) / roll.rowsPerMm;
+const acrossOfKey = (roll, key) => (roll.scan.imageWidth - roll.scan.columnOffset - roll.scan.separation * key) / roll.rowsPerMm;
+const holeHeightMm = (roll) => roll.scan.holeWidthPx / roll.rowsPerMm;
+const trackPitchMm = (roll) => roll.scan.separation / roll.rowsPerMm;
+const firstMm = (roll) => mmOfRow(roll, roll.scan.rowStart);
+const lastMm = (roll) => mmOfRow(roll, roll.scan.rowEnd);
+
+function tilesOfLevel(roll, level) {
+  return level.files.map((file, index) => {
+    const rowFrom = roll.scan.rowStart + index * level.tileRows;
+    const rowTo = Math.min(rowFrom + level.tileRows, roll.scan.rowEnd);
+    return { url: `scan/${roll.druid}/${file}`, from: mmOfRow(roll, rowFrom), to: mmOfRow(roll, rowTo) };
+  });
+}
+
+function holesOf(roll) {
+  return roll.holes.map(([key, on, off], index) => ({ index, key, on, off, across: acrossOfKey(roll, key) }));
+}
+
+function curveAt(roll, values, mm) {
+  const index = clamp(Math.round(mm / roll.curve.stepMm), 0, values.length - 1);
+  return values[index];
+}
+
+function secondsAtMm(roll, mm) {
+  const index = clamp(mm / roll.curve.stepMm, 0, roll.seconds.length - 1);
+  const low = Math.floor(index);
+  const high = Math.min(low + 1, roll.seconds.length - 1);
+  return roll.seconds[low] + (roll.seconds[high] - roll.seconds[low]) * (index - low);
+}
+
+function mmAtSeconds(roll, t) {
+  const seconds = roll.seconds;
+  const search = (low, high) => {
+    if (high - low <= 1) return [low, high];
+    const middle = (low + high) >> 1;
+    return seconds[middle] <= t ? search(middle, high) : search(low, middle);
+  };
+  const [low, high] = search(0, seconds.length - 1);
+  const span = seconds[high] - seconds[low] || 1;
+  return (low + clamp((t - seconds[low]) / span, 0, 1)) * roll.curve.stepMm;
+}
+
+/* ---------- view ---------- */
+const xOfMm = (mm) => (mm - state.view.x0) * state.view.s;
+const mmOfX = (x) => state.view.x0 + x / state.view.s;
+const yOfAcross = (across) => (across - state.view.y0) * state.view.s;
+const acrossOfY = (y) => state.view.y0 + y / state.view.s;
+const visibleMm = () => els.roll.clientWidth / state.view.s;
+const fitScale = () => els.roll.clientHeight / acrossMm(state.roll);
+
+const scaleOfSlider = (value) => fitScale() * (MAX_PX_PER_MM / fitScale()) ** (value / 100);
+const sliderOfScale = (s) => Math.round(100 * Math.log(s / fitScale()) / Math.log(MAX_PX_PER_MM / fitScale()));
+
+function setView(x0, y0, s) {
+  const roll = state.roll;
+  const scale = clamp(s, fitScale(), Math.max(fitScale(), MAX_PX_PER_MM));
+  const width = els.roll.clientWidth;
+  const height = els.roll.clientHeight;
+  state.view.s = scale;
+  state.view.x0 = clamp(x0, firstMm(roll) - 10, Math.max(firstMm(roll), lastMm(roll) - width / scale + 10));
+  state.view.y0 = clamp(y0, 0, Math.max(0, acrossMm(roll) - height / scale));
+  els["zoom-readout"].textContent = `${mm1(visibleMm())} mm sichtbar`;
+  requestDraw();
+}
+
+function zoomAround(x, y, s) {
+  const mm = mmOfX(x);
+  const across = acrossOfY(y);
+  const scale = clamp(s, fitScale(), MAX_PX_PER_MM);
+  els.zoom.value = String(sliderOfScale(scale));
+  setView(mm - x / scale, across - y / scale, scale);
+}
+
+function followCursor() {
+  const x = xOfMm(state.cursorMm);
+  if (x < 0 || x > els.roll.clientWidth * 0.85) setView(state.cursorMm - visibleMm() * 0.15, state.view.y0, state.view.s);
+}
+
+/* ---------- scan tiles ---------- */
+const imageCache = new Map();
+
+function trimCache() {
+  const excess = imageCache.size - CACHE_LIMIT;
+  if (excess > 0) [...imageCache.keys()].slice(0, excess).forEach((url) => imageCache.delete(url));
+}
+
+function imageOf(url) {
+  const cached = imageCache.get(url);
+  if (cached) {
+    imageCache.delete(url);
+    imageCache.set(url, cached);
+    return cached;
+  }
+  const entry = { image: new Image(), ready: false };
+  entry.image.decoding = "async";
+  entry.image.addEventListener("load", () => { entry.ready = true; requestDraw(); });
+  entry.image.src = url;
+  imageCache.set(url, entry);
+  trimCache();
+  return entry;
+}
+
+// The coarsest level whose resolution still covers the screen's pixels.
+function levelFor(roll) {
+  const needed = (state.view.s * (window.devicePixelRatio || 1)) / roll.rowsPerMm;
+  const adequate = roll.scan.levels.map((level, index) => ({ scale: level.scale, index })).filter((level) => level.scale >= needed);
+  return adequate.length ? adequate.at(-1).index : 0;
+}
+
+/* ---------- canvas plumbing ---------- */
+function prepare(canvas) {
+  const ratio = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+  }
+  const context = canvas.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.clearRect(0, 0, width, height);
+  context.imageSmoothingQuality = "high";
+  return { context, width, height };
+}
+
+const fontOf = (px, weight = 400) => `${weight} ${px}px ${getComputedStyle(document.body).fontFamily}`;
+
+function labelBox(context, text, x, y, { size = 12, align = "left", weight = 400 } = {}) {
+  context.font = fontOf(size, weight);
+  const width = context.measureText(text).width + 8;
+  const left = align === "center" ? x - width / 2 : x;
+  context.fillStyle = COLORS.bg;
+  context.fillRect(left, y - size / 2 - 3, width, size + 6);
+  context.fillStyle = COLORS.fg;
+  context.textBaseline = "middle";
+  context.fillText(text, left + 4, y + 0.5);
+  return width;
+}
+
+function tickStep(pxPerMm) {
+  const candidates = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+  return candidates.find((step) => step * pxPerMm >= 80) ?? 1000;
+}
+
+/* ---------- drawing: overview ---------- */
+function overviewScale(width) {
+  const roll = state.roll;
+  return width / (lastMm(roll) - firstMm(roll));
+}
+
+function drawOverview() {
+  const roll = state.roll;
+  const { context, width, height } = prepare(els.overview);
+  const scale = overviewScale(width);
+  const xOf = (mm) => (mm - firstMm(roll)) * scale;
+  roll.tiles.at(-1).forEach((tile) => {
+    const entry = imageOf(tile.url);
+    if (entry.ready) context.drawImage(entry.image, xOf(tile.from), 0, (tile.to - tile.from) * scale, height);
+  });
+  const left = xOf(state.view.x0);
+  const span = Math.max(3, visibleMm() * scale);
+  context.lineWidth = 3;
+  context.strokeStyle = COLORS.bg;
+  context.strokeRect(left, 1.5, span, height - 3);
+  context.lineWidth = 1;
+  context.strokeStyle = COLORS.fg;
+  context.strokeRect(left - 1.5, 0.5, span + 3, height - 1);
+  context.fillStyle = COLORS.hi;
+  context.fillRect(Math.round(xOf(state.cursorMm)) - 1, 0, 2, height);
+}
+
+/* ---------- drawing: ruler ---------- */
+function drawRuler() {
+  const { context, width, height } = prepare(els.ruler);
+  const step = tickStep(state.view.s);
+  const first = Math.ceil(state.view.x0 / step) * step;
+  const ticks = Array.from({ length: Math.ceil(visibleMm() / step) + 1 }, (_, i) => first + i * step);
+  const zeroX = xOfMm(0);
+  if (zeroX > 0) {
+    context.fillStyle = COLORS.fill;
+    context.fillRect(0, 0, Math.min(zeroX, width), height);
+  }
+  context.fillStyle = COLORS.fg;
+  context.strokeStyle = COLORS.fg;
+  context.font = fontOf(12);
+  context.textBaseline = "top";
+  ticks.forEach((mm) => {
+    const x = Math.round(xOfMm(mm)) + 0.5;
+    context.beginPath();
+    context.moveTo(x, height - 7);
+    context.lineTo(x, height);
+    context.stroke();
+    context.fillText(mm === 0 ? "0 erstes Loch" : `${mm} mm`, x + 3, 5);
+  });
+  if (zeroX > 110 && zeroX <= width) context.fillText("Vorspann", zeroX - 90, 5);
+  context.fillStyle = COLORS.fg;
+  context.fillRect(Math.round(xOfMm(state.cursorMm)) - 1, 0, 2, height);
+}
+
+/* ---------- drawing: roll ---------- */
+function drawTiles(context, tiles, width) {
+  const top = yOfAcross(0);
+  const height = acrossMm(state.roll) * state.view.s;
+  tiles
+    .filter((tile) => xOfMm(tile.to) >= 0 && xOfMm(tile.from) <= width)
+    .forEach((tile) => {
+      const entry = imageOf(tile.url);
+      if (!entry.ready) return;
+      const left = Math.floor(xOfMm(tile.from));
+      context.drawImage(entry.image, left, top, Math.ceil(xOfMm(tile.to)) - left, height);
+    });
+}
+
+function drawScan(context, width) {
+  const roll = state.roll;
+  const chosen = levelFor(roll);
+  drawTiles(context, roll.tiles.at(-1), width);
+  if (chosen !== roll.tiles.length - 1) drawTiles(context, roll.tiles[chosen], width);
+}
+
+// Slightly larger than the hole, so a fill also covers its bright rim in the scan.
+function holePath(context, hole) {
+  const rim = HOLE_RIM_MM * state.view.s;
+  const height = holeHeightMm(state.roll) * state.view.s + 2 * rim;
+  const x = xOfMm(hole.on) - rim;
+  const y = yOfAcross(hole.across) - height / 2;
+  const width = Math.max(2, (hole.off - hole.on) * state.view.s + 2 * rim);
+  context.beginPath();
+  context.roundRect(x, y, width, height, Math.min(height, width) / 2);
+}
+
+function visibleHoles(width) {
+  const from = mmOfX(0);
+  const to = mmOfX(width);
+  return state.roll.holeList.filter((hole) => hole.off >= from && hole.on <= to);
+}
+
+function fillHoles(context, holes, color, alpha) {
+  context.globalAlpha = alpha;
+  context.fillStyle = color;
+  holes.forEach((hole) => { holePath(context, hole); context.fill(); });
+  context.globalAlpha = 1;
+}
+
+function outlineHole(context, hole, lineWidth) {
+  holePath(context, hole);
+  context.lineWidth = lineWidth + 2;
+  context.strokeStyle = COLORS.fg;
+  context.stroke();
+  context.lineWidth = lineWidth;
+  context.strokeStyle = COLORS.hi;
+  context.stroke();
+  context.lineWidth = 1;
+}
+
+function drawHoleOverlay(context, width) {
+  const holes = visibleHoles(width);
+  if (els["show-holes"].checked) {
+    const coded = holes.filter((hole) => codeOf(hole.key));
+    fillHoles(context, coded.filter((hole) => codeOf(hole.key).half === "bass"), COLORS.bass, 0.7);
+    fillHoles(context, coded.filter((hole) => codeOf(hole.key).half === "treble"), COLORS.treble, 0.7);
+  }
+  fillHoles(context, holes.filter((hole) => hole.on <= state.cursorMm && hole.off >= state.cursorMm), COLORS.hi, 0.9);
+  const selected = state.selected === null ? null : state.roll.holeList[state.selected];
+  if (selected) outlineHole(context, selected, 3);
+  if (state.hover && state.hover !== selected) outlineHole(context, state.hover, 2);
+}
+
+function bandLabel(context, half, height) {
+  const roll = state.roll;
+  const keys = half === "bass" ? [TRACKS.lowest, TRACKS.bassExpression] : [TRACKS.trebleExpression, TRACKS.highest];
+  const y = (yOfAcross(acrossOfKey(roll, keys[0])) + yOfAcross(acrossOfKey(roll, keys[1]))) / 2;
+  if (y > 8 && y < height - 8) labelBox(context, `${halfName(half)}: Ausdrucksspuren`, 6, y);
+}
+
+function drawTrackLabels(context, height) {
+  const roll = state.roll;
+  const pitch = trackPitchMm(roll) * state.view.s;
+  if (pitch < LABEL_PITCH_PX) {
+    ["treble", "bass"].forEach((half) => bandLabel(context, half, height));
+    return;
+  }
+  const size = Math.min(12, pitch - 3);
+  const coded = Object.keys(CODES).map(Number).map((key) => ({ key, text: codeName(codeOf(key)) }));
+  const octaves = OCTAVE_KEYS.map((key) => ({ key, text: noteName(key) }));
+  [...coded, ...octaves]
+    .map((label) => ({ ...label, y: yOfAcross(acrossOfKey(roll, label.key)) }))
+    .filter((label) => label.y > 6 && label.y < height - 6)
+    .forEach((label) => labelBox(context, label.text, 6, label.y, { size }));
+}
+
+function markColorOn(context, onScan) {
+  context.strokeStyle = onScan ? COLORS.bg : COLORS.fg;
+}
+
+function drawMarkLines(context, height, onScan) {
+  context.lineWidth = onScan ? 1.5 : 1;
+  context.setLineDash([5, 4]);
+  markColorOn(context, onScan);
+  state.marks.forEach((mark) => {
+    const x = Math.round(xOfMm(mark.mm)) + 0.5;
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, height);
+    context.stroke();
+  });
+  context.setLineDash([]);
+  context.lineWidth = 1;
+}
+
+function markLabelWidth(context, mark, index) {
+  context.font = fontOf(12, 600);
+  const number = context.measureText(String(index + 1)).width + 8;
+  context.font = fontOf(12);
+  return number + (mark.note ? context.measureText(mark.note).width + 10 : 0);
+}
+
+function drawMarkLabels(context, height) {
+  const spans = state.marks.map((mark, index) => {
+    const from = Math.round(xOfMm(mark.mm)) + 2;
+    return { from, to: from + markLabelWidth(context, mark, index) };
+  });
+  const lanes = lanesFor(spans);
+  state.marks.forEach((mark, index) => {
+    const y = height - 14 - lanes[index] * 22;
+    const width = labelBox(context, String(index + 1), spans[index].from, y, { weight: 600 });
+    if (mark.note) labelBox(context, mark.note, spans[index].from + width + 2, y);
+  });
+}
+
+// A dimension line between each pair of neighbouring marks; overlapping spans move to lower lanes.
+function drawDimensions(context) {
+  const rows = intervals().filter((row) => row.deltaMm !== null);
+  const spans = rows.map((row) => ({ from: xOfMm(row.mm - row.deltaMm), to: xOfMm(row.mm) }));
+  const lanes = lanesFor(spans);
+  rows.forEach((row, index) => {
+    const x1 = spans[index].from;
+    const x2 = spans[index].to;
+    const y = 16 + lanes[index] * 24;
+    context.strokeStyle = COLORS.bg;
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.moveTo(x1, y);
+    context.lineTo(x2, y);
+    [x1, x2].forEach((x) => { context.moveTo(x, y - 6); context.lineTo(x, y + 6); });
+    context.stroke();
+    context.lineWidth = 1;
+    const text = `${mm1(row.deltaMm)} mm · ${s3(row.deltaS)} s`;
+    context.font = fontOf(12);
+    if (context.measureText(text).width + 12 < x2 - x1) labelBox(context, text, (x1 + x2) / 2, y, { align: "center" });
+  });
+}
+
+function drawCursor(context, height, color) {
+  context.fillStyle = color;
+  context.fillRect(Math.round(xOfMm(state.cursorMm)) - 1, 0, 2, height);
+}
+
+function drawRoll() {
+  const { context, width, height } = prepare(els.roll);
+  context.fillStyle = COLORS.bg;
+  context.fillRect(0, 0, width, height);
+  drawScan(context, width);
+  drawHoleOverlay(context, width);
+  drawMarkLines(context, height, true);
+  drawCursor(context, height, COLORS.hi);
+  if (els["show-labels"].checked) drawTrackLabels(context, height);
+  drawDimensions(context);
+  drawMarkLabels(context, height);
+}
+
+/* ---------- drawing: curves ---------- */
+function drawCurve(context, values, color, width, height, pad) {
+  const roll = state.roll;
+  const step = roll.curve.stepMm;
+  const first = clamp(Math.floor(mmOfX(0) / step), 0, values.length - 1);
+  const last = clamp(Math.ceil(mmOfX(width) / step), 0, values.length - 1);
+  const yOf = (travel) => pad + (1 - travel) * (height - 2 * pad);
+  context.strokeStyle = color;
+  context.lineWidth = 1.6;
+  context.beginPath();
+  Array.from({ length: last - first + 1 }, (_, i) => first + i).forEach((index, i) => {
+    const x = xOfMm(index * step);
+    const y = yOf(values[index]);
+    if (i === 0) context.moveTo(x, y); else context.lineTo(x, y);
+  });
+  context.stroke();
+  context.lineWidth = 1;
+}
+
+function drawHook(context, travel, color, width, height, pad) {
+  const y = Math.round(pad + (1 - travel) * (height - 2 * pad)) + 0.5;
+  context.strokeStyle = color;
+  context.setLineDash([6, 5]);
+  context.beginPath();
+  context.moveTo(0, y);
+  context.lineTo(width, y);
+  context.stroke();
+  context.setLineDash([]);
+}
+
+function drawCurves() {
+  const { context, width, height } = prepare(els.curves);
+  const pad = 14;
+  const roll = state.roll;
+  context.strokeStyle = COLORS.rule;
+  [0, 1].forEach((travel) => {
+    const y = Math.round(pad + (1 - travel) * (height - 2 * pad)) + 0.5;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+  });
+  drawHook(context, roll.curve.hook.bass, COLORS.bass, width, height, pad);
+  drawHook(context, roll.curve.hook.treble, COLORS.treble, width, height, pad);
+  drawCurve(context, roll.curve.bass, COLORS.bass, width, height, pad);
+  drawCurve(context, roll.curve.treble, COLORS.treble, width, height, pad);
+  context.fillStyle = COLORS.fg;
+  context.font = fontOf(11);
+  context.textBaseline = "middle";
+  context.fillText("1 geschlossen (ff)", 6, pad - 6);
+  context.fillText("0 offen (pp)", 6, height - pad + 7);
+  drawMarkLines(context, height, false);
+  drawCursor(context, height, COLORS.fg);
+}
+
+function drawAll() {
+  state.drawQueued = false;
+  if (!state.roll) return;
+  drawOverview();
+  drawRuler();
+  drawRoll();
+  drawCurves();
+}
+
+function requestDraw() {
+  if (state.drawQueued) return;
+  state.drawQueued = true;
+  requestAnimationFrame(drawAll);
+}
+
+/* ---------- hit testing and the info line ---------- */
+function holeAt(x, y) {
+  const roll = state.roll;
+  const mm = mmOfX(x);
+  const across = acrossOfY(y);
+  const slackMm = 3 / state.view.s;
+  const reach = holeHeightMm(roll) / 2 + slackMm;
+  const hits = roll.holeList.filter((hole) => mm >= hole.on - slackMm && mm <= hole.off + slackMm && Math.abs(hole.across - across) <= reach);
+  return hits.reduce((best, hole) => (!best || Math.abs(hole.across - across) < Math.abs(best.across - across) ? hole : best), null);
+}
+
+function describeHole(hole) {
+  const roll = state.roll;
+  const code = codeOf(hole.key);
+  const half = code ? code.half : halfOfNote(hole.key);
+  const what = code
+    ? `Ausdrucksspur ${halfName(half)} · ${codeName(code)}`
+    : `Taste ${noteName(hole.key)} (MIDI ${hole.key}) · ${halfName(half)}`;
+  const where = `Anfang ${mm1(hole.on)} mm · Länge ${mm1(hole.off - hole.on)} mm · ${clock(secondsAtMm(roll, hole.on))}`;
+  const travel = `Balgweg ${halfName(half)} ${travel2(curveAt(roll, roll.curve[half], hole.on))}`;
+  return `${what} · ${where} · ${travel}`;
+}
+
+function renderInfo() {
+  const hole = state.hover ?? (state.selected === null ? null : state.roll.holeList[state.selected]);
+  els.info.textContent = hole
+    ? describeHole(hole)
+    : `Spurleiste bei ${mm1(state.cursorMm)} mm · ${clock(secondsAtMm(state.roll, state.cursorMm))}. Zeiger auf ein Loch zeigt Taste oder Spur, Anfang, Länge und Balgweg.`;
+}
+
+/* ---------- marks ---------- */
+const storageKey = (roll) => `rollenlabor-marks-${roll.druid}`;
+
+function saveMarks() {
+  try { localStorage.setItem(storageKey(state.roll), JSON.stringify(state.marks)); } catch { /* storage may be unavailable */ }
+}
+
+function loadMarks(roll) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKey(roll)) ?? "[]");
+    return Array.isArray(stored) ? stored.filter((mark) => Number.isFinite(mark.mm)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setMarks(marks) {
+  state.marks = [...marks].sort((a, b) => a.mm - b.mm);
+  saveMarks();
+  renderMarks();
+  requestDraw();
+}
+
+function toggleMarkAt(mm, reference) {
+  const existing = state.marks.findIndex((mark) => Math.abs(mark.mm - mm) < 0.01);
+  setMarks(existing >= 0 ? state.marks.filter((_, index) => index !== existing) : [...state.marks, { mm, reference, note: "" }]);
+}
+
+function intervals() {
+  return state.marks.map((mark, index) => {
+    const previous = state.marks[index - 1];
+    return {
+      number: index + 1,
+      mm: mark.mm,
+      deltaMm: previous === undefined ? null : mark.mm - previous.mm,
+      deltaS: previous === undefined ? null : secondsAtMm(state.roll, mark.mm) - secondsAtMm(state.roll, previous.mm),
+    };
+  });
+}
+
+function cell(text, className) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  if (className) td.className = className;
+  return td;
+}
+
+function noteCell(mark) {
+  const td = document.createElement("td");
+  td.className = "text";
+  const input = Object.assign(document.createElement("input"), { type: "text", value: mark.note ?? "", placeholder: "Notiz" });
+  input.setAttribute("aria-label", "Notiz zur Marke");
+  input.addEventListener("input", () => { mark.note = input.value; saveMarks(); requestDraw(); });
+  td.append(input);
+  return td;
+}
+
+function removeCell(index) {
+  const td = document.createElement("td");
+  const button = Object.assign(document.createElement("button"), { type: "button", textContent: "×" });
+  button.setAttribute("aria-label", `Marke ${index + 1} entfernen`);
+  button.addEventListener("click", () => setMarks(state.marks.filter((_, i) => i !== index)));
+  td.append(button);
+  return td;
+}
+
+function renderMarks() {
+  const rows = intervals();
+  els.marks.replaceChildren(...rows.map((row, index) => {
+    const mark = state.marks[index];
+    const tr = document.createElement("tr");
+    tr.append(
+      cell(String(row.number)), cell(mark.reference ?? "frei", "text"), cell(mm1(row.mm)),
+      cell(row.deltaMm === null ? "" : mm1(row.deltaMm)), cell(row.deltaS === null ? "" : s3(row.deltaS)),
+      noteCell(mark), removeCell(index),
+    );
+    return tr;
+  }));
+  const last = rows.at(-1);
+  els["last-distance"].textContent = last && last.deltaMm !== null ? `${mm1(last.deltaMm)} mm · ${s3(last.deltaS)} s` : "–";
+}
+
+function tableText() {
+  const header = ["Marke", "Bezug", "Position mm", "Delta mm", "Delta s (Emulation)", "Notiz"].join("\t");
+  const lines = intervals().map((row, index) => [
+    row.number, state.marks[index].reference ?? "frei", mm1(row.mm),
+    row.deltaMm === null ? "" : mm1(row.deltaMm), row.deltaS === null ? "" : s3(row.deltaS), state.marks[index].note ?? "",
+  ].join("\t"));
+  return [`${state.roll.label}, ${state.roll.purl}`, header, ...lines].join("\n");
+}
+
+async function copyTable() {
+  try {
+    await navigator.clipboard.writeText(tableText());
+    els["copy-status"].textContent = "Kopiert.";
+  } catch {
+    els["copy-status"].textContent = "Kopieren nicht erlaubt; Tabelle von Hand markieren.";
+  }
+}
+
+/* ---------- playback ---------- */
+function updateClock() {
+  els.clock.textContent = clock(secondsAtMm(state.roll, state.cursorMm));
+}
+
+function tick() {
+  if (!state.playing) return;
+  state.cursorMm = mmAtSeconds(state.roll, els.audio.currentTime);
+  updateClock();
+  followCursor();
+  renderInfo();
+  requestDraw();
+  requestAnimationFrame(tick);
+}
+
+function setPlaying(playing) {
+  state.playing = playing;
+  els.play.setAttribute("aria-pressed", String(playing));
+  els.play.textContent = playing ? "Anhalten" : "Abspielen";
+  if (playing) requestAnimationFrame(tick);
+}
+
+async function togglePlay() {
+  if (state.playing) { els.audio.pause(); return; }
+  els.audio.currentTime = secondsAtMm(state.roll, Math.max(0, state.cursorMm));
+  try { await els.audio.play(); } catch { setPlaying(false); }
+}
+
+function seekToMm(mm) {
+  state.cursorMm = clamp(mm, 0, state.roll.lengthMm);
+  if (state.playing) els.audio.currentTime = secondsAtMm(state.roll, state.cursorMm);
+  updateClock();
+  renderInfo();
+  requestDraw();
+}
+
+/* ---------- loading ---------- */
+function describe(roll) {
+  const catalogue = roll.catalogue ?? {};
+  const parts = [
+    roll.label,
+    catalogue.work ?? roll.title,
+    `gespielt von ${catalogue.performer ?? roll.performer}`,
+    catalogue.recorded ? `aufgenommen ${catalogue.recorded}` : null,
+    roll.callnum,
+  ].filter(Boolean);
+  const link = Object.assign(document.createElement("a"), { href: roll.purl, textContent: `Scan: ${roll.purl}`, target: "_blank", rel: "noopener" });
+  const spans = parts.map((text) => Object.assign(document.createElement("span"), { textContent: text }));
+  const note = catalogue.note ? [Object.assign(document.createElement("span"), { textContent: catalogue.note })] : [];
+  els.about.replaceChildren(...spans, link, ...note);
+}
+
+async function loadAudio(druid) {
+  if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
+  els.play.disabled = true;
+  els.play.textContent = "Lädt …";
+  const response = await fetch(`audio/${druid}.mp3`);
+  state.audioUrl = URL.createObjectURL(await response.blob());
+  els.audio.src = state.audioUrl;
+  els.play.disabled = false;
+  els.play.textContent = "Abspielen";
+}
+
+async function loadRoll(druid) {
+  els.audio.pause();
+  const roll = await (await fetch(`data/${druid}.json`)).json();
+  roll.holeList = holesOf(roll);
+  roll.tiles = roll.scan.levels.map((level) => tilesOfLevel(roll, level));
+  state.roll = roll;
+  state.marks = loadMarks(roll);
+  state.cursorMm = 0;
+  state.hover = null;
+  state.selected = null;
+  describe(roll);
+  renderMarks();
+  updateClock();
+  renderInfo();
+  const scale = scaleOfSlider(Number(els.zoom.value));
+  setView(-15, acrossMm(roll) / 2 - els.roll.clientHeight / scale / 2, scale);
+  loadAudio(druid);
+}
+
+async function start() {
+  const rolls = await (await fetch("rolls.json")).json();
+  els["roll-select"].replaceChildren(...rolls.map((roll) => Object.assign(document.createElement("option"), { value: roll.druid, textContent: roll.selector })));
+  await loadRoll(rolls[0].druid);
+}
+
+/* ---------- input ---------- */
+const local = (event, canvas) => {
+  const box = canvas.getBoundingClientRect();
+  return { x: event.clientX - box.left, y: event.clientY - box.top };
+};
+
+function bindDrag(canvas, { onPan, onClick, onHover }) {
+  const drag = { active: false, moved: false, x: 0, y: 0, view: null };
+  canvas.addEventListener("pointerdown", (event) => {
+    Object.assign(drag, { active: true, moved: false, x: event.clientX, y: event.clientY, view: { ...state.view } });
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (!drag.active) { onHover?.(event); return; }
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+    if (drag.moved) { canvas.classList.add("panning"); onPan(dx, dy, drag.view, event); }
+  });
+  canvas.addEventListener("pointerup", (event) => {
+    if (drag.active && !drag.moved) onClick(event);
+    drag.active = false;
+    canvas.classList.remove("panning");
+  });
+  canvas.addEventListener("pointercancel", () => { drag.active = false; canvas.classList.remove("panning"); });
+  canvas.addEventListener("pointerleave", () => onHover?.(null));
+}
+
+function bindWheel(canvas) {
+  canvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const { x, y } = local(event, canvas);
+    if (event.ctrlKey || event.metaKey) {
+      zoomAround(x, canvas === els.roll ? y : els.roll.clientHeight / 2, state.view.s * Math.exp(-event.deltaY * 0.002));
+      return;
+    }
+    if (event.shiftKey && canvas === els.roll) {
+      setView(state.view.x0, state.view.y0 + event.deltaY / state.view.s, state.view.s);
+      return;
+    }
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    setView(state.view.x0 + delta / state.view.s, state.view.y0, state.view.s);
+  }, { passive: false });
+}
+
+const panAlong = (dx, dy, view) => setView(view.x0 - dx / view.s, view.y0, view.s);
+const panBoth = (dx, dy, view) => setView(view.x0 - dx / view.s, view.y0 - dy / view.s, view.s);
+
+function clickRoll(event) {
+  const { x, y } = local(event, els.roll);
+  const markHit = state.marks.findIndex((mark) => Math.abs(xOfMm(mark.mm) - x) <= HIT_PX);
+  if (markHit >= 0) { setMarks(state.marks.filter((_, index) => index !== markHit)); return; }
+  const hole = holeAt(x, y);
+  state.selected = hole ? hole.index : null;
+  renderInfo();
+  if (!hole) { toggleMarkAt(mmOfX(x), null); return; }
+  const atEnd = event.altKey;
+  toggleMarkAt(atEnd ? hole.off : hole.on, `${holeName(hole)}, ${atEnd ? "Ende" : "Anfang"}`);
+}
+
+function hoverRoll(event) {
+  const hole = event ? holeAt(local(event, els.roll).x, local(event, els.roll).y) : null;
+  if (hole === state.hover) return;
+  state.hover = hole;
+  els.roll.classList.toggle("on-hole", Boolean(hole));
+  renderInfo();
+  requestDraw();
+}
+
+function centreOnOverview(event) {
+  const { x } = local(event, els.overview);
+  const mm = firstMm(state.roll) + x / overviewScale(els.overview.clientWidth);
+  setView(mm - visibleMm() / 2, state.view.y0, state.view.s);
+}
+
+bindDrag(els.roll, { onPan: panBoth, onClick: clickRoll, onHover: hoverRoll });
+bindDrag(els.curves, { onPan: panAlong, onClick: (event) => toggleMarkAt(mmOfX(local(event, els.curves).x), null) });
+bindDrag(els.ruler, { onPan: panAlong, onClick: (event) => seekToMm(mmOfX(local(event, els.ruler).x)) });
+bindDrag(els.overview, { onPan: (dx, dy, view, event) => centreOnOverview(event), onClick: centreOnOverview });
+[els.roll, els.curves, els.ruler].forEach(bindWheel);
+
+els.zoom.addEventListener("input", () => {
+  zoomAround(els.roll.clientWidth / 2, els.roll.clientHeight / 2, scaleOfSlider(Number(els.zoom.value)));
+});
+els["to-leader"].addEventListener("click", () => setView(firstMm(state.roll), state.view.y0, state.view.s));
+els["to-start"].addEventListener("click", () => setView(-15, state.view.y0, state.view.s));
+els["show-holes"].addEventListener("change", requestDraw);
+els["show-labels"].addEventListener("change", requestDraw);
+els["roll-select"].addEventListener("change", () => loadRoll(els["roll-select"].value));
+els.play.addEventListener("click", togglePlay);
+els.audio.addEventListener("play", () => setPlaying(true));
+els.audio.addEventListener("pause", () => setPlaying(false));
+els.audio.addEventListener("ended", () => setPlaying(false));
+els.copy.addEventListener("click", copyTable);
+els.clear.addEventListener("click", () => setMarks([]));
+
+const typing = (target) => target instanceof HTMLSelectElement || target instanceof HTMLInputElement || target instanceof HTMLButtonElement;
+const KEYS = {
+  " ": () => togglePlay(),
+  Backspace: () => state.marks.length && setMarks(state.marks.slice(0, -1)),
+  ArrowRight: () => setView(state.view.x0 + visibleMm() * 0.25, state.view.y0, state.view.s),
+  ArrowLeft: () => setView(state.view.x0 - visibleMm() * 0.25, state.view.y0, state.view.s),
+  "+": () => zoomAround(els.roll.clientWidth / 2, els.roll.clientHeight / 2, state.view.s * 1.25),
+  "-": () => zoomAround(els.roll.clientWidth / 2, els.roll.clientHeight / 2, state.view.s / 1.25),
+};
+document.addEventListener("keydown", (event) => {
+  if (typing(event.target) || !KEYS[event.key] || !state.roll) return;
+  event.preventDefault();
+  KEYS[event.key]();
+});
+window.addEventListener("resize", () => state.roll && setView(state.view.x0, state.view.y0, scaleOfSlider(Number(els.zoom.value))));
+
+start().catch((error) => { els.about.textContent = `Die Rollendaten konnten nicht geladen werden: ${error.message}`; });
+</script>

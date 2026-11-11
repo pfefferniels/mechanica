@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+{{faces}}
+<link rel="stylesheet" href="viewer/viewer.css">
+</head>
+<body>
+<main id="viewport">
+<div id="stage">
+{{slides}}
+</div>
+<section id="notes" class="panel" hidden aria-label="Notizen zur Folie"></section>
+<section id="contents" class="panel" hidden aria-label="Inhalt">
+  <ol>
+{{contents}}
+  </ol>
+  <p class="keys">Pfeiltasten oder Leertaste blättern, N Notizen, I Inhalt, F Vollbild.</p>
+</section>
+</main>
+<nav id="bar" aria-label="Folien">
+  <button id="prev" type="button" aria-label="Vorige Folie">←</button>
+  <span id="counter" class="readout" aria-live="polite"></span>
+  <button id="next" type="button" aria-label="Nächste Folie">→</button>
+  <button id="toggle-contents" type="button" aria-expanded="false" aria-controls="contents">Inhalt</button>
+  <button id="toggle-notes" type="button" aria-expanded="false" aria-controls="notes">Notizen</button>
+  <button id="fullscreen" type="button">Vollbild</button>
+  <span class="apps">{{apps}}</span>
+</nav>
+<script src="viewer/viewer.js"></script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<title>Skyline-Werkstatt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working column — controls, tap pad, the graph across the full width, then the raw data. */
+:root {
+  --bg: #ffffff;
+  --fg: #000000;
+  --rule: #d4d4d4;
+  --bar-rgb: 0, 0, 0;
+  --pad-bg: #000000;
+  --pad-fg: #ffffff;
+  --mono: 'IBM Plex Mono', 'Courier New', ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111111; --fg: #f2f2f2; --rule: #3a3a3a; --bar-rgb: 242, 242, 242;
+    --pad-bg: #f2f2f2; --pad-fg: #111111; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111111; --fg: #f2f2f2; --rule: #3a3a3a; --bar-rgb: 242, 242, 242;
+  --pad-bg: #f2f2f2; --pad-fg: #111111; color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+h1 { font-size: 28px; font-weight: 500; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 70ch; }
+.source { font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+select, input, button, textarea { font: inherit; color: var(--fg); background: var(--bg); }
+select, input[type="number"] { border: 1px solid var(--fg); padding: 6px 8px; border-radius: 0; min-width: 0; }
+input[type="number"] { width: 6em; }
+button { border: 1px solid var(--fg); padding: 7px 14px; cursor: pointer; border-radius: 0; }
+button:hover { background: var(--fg); color: var(--bg); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.seg { display: inline-flex; }
+.seg button + button { border-left: none; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+#pad {
+  width: 100%; min-height: 120px; border: none;
+  background: var(--pad-bg); color: var(--pad-fg);
+  font-size: 22px; font-weight: 500; letter-spacing: 0.04em;
+  touch-action: manipulation; user-select: none;
+}
+#pad:hover { background: var(--pad-bg); color: var(--pad-fg); }
+#pad.flash { opacity: 0.75; }
+.status { display: flex; flex-wrap: wrap; gap: 8px 24px; font-variant-numeric: tabular-nums; font-size: 14px; }
+.chart-wrap { overflow-x: auto; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--fg); }
+canvas { display: block; }
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center; }
+textarea { width: 100%; min-height: 9em; border: 1px solid var(--fg); padding: 8px; font-variant-numeric: tabular-nums; box-sizing: border-box; }
+details summary { cursor: pointer; }
+details[open] summary { margin-bottom: 12px; }
+.steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; max-width: 75ch; }
+@media (prefers-reduced-motion: reduce) { #pad.flash { opacity: 1; } }
+</style>
+
+<main>
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Skyline-Werkstatt</h1>
+    <p>Mittippen, Dauern paarweise zusammenfassen, als SKYLINE2 (Dauer) oder SKYLINE (Tempo) zeichnen. Nach Hermann Gottschewski, <i>Die Interpretation als Kunstwerk</i>, Laaber 1996, S. 245–257 und 269f.</p>
+  </header>
+
+  <section class="row" aria-label="Aufnahme">
+    <label for="source">Aufnahme
+      <select id="source">
+        <option value="audio/reinecke-41a.mp3">Reinecke, Mozart KV 537/II (Hb. 41, Ausschnitt)</option>
+        <option value="audio/pugno-16a.mp3">Pugno, op. 15,2 Mittelteil (Hb. 16)</option>
+        <option value="audio/scharwenka-10a.mp3">Scharwenka, op. 15,2 Mittelteil (Hb. 10)</option>
+        <option value="audio/busoni-23a.mp3">Busoni, op. 15,2 Mittelteil (Hb. 23)</option>
+        <option value="audio/saintsaens-3a.mp3">Saint-Saëns, op. 15,2 Mittelteil (Hb. 3)</option>
+        <option value="audio/saintsaens.mp3">Saint-Saëns, op. 15,2 ganz (Hb. 1)</option>
+        <option value="audio/scharwenka.mp3">Scharwenka, op. 15,2 ganz (Hb. 7)</option>
+        <option value="audio/pugno.mp3">Pugno, op. 15,2 ganz (Hb. 14)</option>
+        <option value="audio/busoni.mp3">Busoni, op. 15,2 ganz (Hb. 20)</option>
+        <optgroup label="Eigene Analysen (Welte-Mignon, Stanford SUPRA)">
+          <option value="audio/gruenfeld-des-abends-207.mp3">Grünfeld, Schumann, Des Abends op. 12,1 (WM 207)</option>
+          <option value="audio/dalbert-nocturne-op9-1-2979.mp3">d'Albert, Chopin, Nocturne op. 9,1 (WM 2979)</option>
+          <option value="audio/dalbert-polonaise-op53-419.mp3">d'Albert, Chopin, Polonaise op. 53 (WM 419)</option>
+          <option value="audio/grieg-schmetterling-1275.mp3">Grieg, Schmetterling op. 43,1 (WM 1275)</option>
+          <option value="audio/pachmann-vogel-als-prophet-1208.mp3">Pachmann, Schumann, Vogel als Prophet op. 82,7 (WM 1208)</option>
+          <option value="audio/paur-brahms-op117-2-2555.mp3">Paur, Brahms, Intermezzo op. 117,2 (WM 2555)</option>
+        </optgroup>
+        <option value="file">Eigene Datei …</option>
+      </select>
+    </label>
+    <input id="file" type="file" accept="audio/*" hidden>
+    <button id="play" type="button">Abspielen</button>
+    <button id="rewind" type="button">Zum Anfang</button>
+    <label for="rate">Geschwindigkeit
+      <select id="rate">
+        <option value="1">100 %</option>
+        <option value="0.75">75 %</option>
+        <option value="0.5">50 %</option>
+      </select>
+    </label>
+    <audio id="audio" preload="auto"></audio>
+  </section>
+
+  <section class="row" aria-label="Metrum">
+    <label for="perBar">Tipps pro Takt
+      <select id="perBar">
+        <option value="1">1</option>
+        <option value="2" selected>2 (Halbtakte)</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label>
+    <label for="firstBar">erster Takt Nr.
+      <input id="firstBar" type="number" value="1" min="0" step="1">
+    </label>
+    <div class="seg" role="group" aria-label="Darstellung">
+      <button id="mode2" type="button" aria-pressed="true">SKYLINE2 · Dauer</button>
+      <button id="mode1" type="button" aria-pressed="false">SKYLINE · Tempo</button>
+    </div>
+  </section>
+
+  <button id="pad" type="button">Tippen · Leertaste</button>
+
+  <div class="status" aria-live="polite">
+    <span id="state">Beispiel (konstruiert): ein Tempobogen über acht Takte</span>
+    <span id="count"></span>
+    <span><button id="undo" type="button">Letzten Tipp löschen</button></span>
+    <span><button id="clear" type="button">Neu beginnen</button></span>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:8px" aria-label="Graphik">
+    <div class="chart-head">
+      <span id="axisLabel">Dauer in s</span>
+      <span id="legend"></span>
+    </div>
+    <div class="chart-wrap" id="wrap"><canvas id="chart" role="img" aria-label="Skyline-Graphik der getippten Zeitpunkte"></canvas></div>
+    <span>Zeit in s ab dem ersten Tipp · Zahlen unter der Achse: Takte</span>
+  </section>
+
+  <details>
+    <summary>Zeitpunkte (s) ansehen, kopieren oder einfügen</summary>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <textarea id="data" spellcheck="false" aria-label="Zeitpunkte in Sekunden, einer pro Zeile"></textarea>
+      <div class="row">
+        <button id="apply" type="button">Übernehmen</button>
+        <button id="copy" type="button">Kopieren</button>
+        <span id="copyState" aria-live="polite"></span>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Vorgehen nach Gottschewski</summary>
+    <ol class="steps">
+      <li>Mehrmals hören, abschnittsweise (S. 270).</li>
+      <li>Festlegen, welcher Ton als Schlag zählt: in op. 15,2 außen der Basston, im Mittelteil der oberste Melodieton (S. 269). Bei Reinecke die Halbtaktschläge der Melodie (Tempoarchitektur, S. 107).</li>
+      <li>Ab dem ersten vollen Takt mittippen. Gottschewski nennt Fehler bis 0,2 s und hält das für die Zeitdisposition im Großen für ausreichend (S. 257, Anm. 240; S. 273).</li>
+      <li>Je zwei gleich lange Einheiten zu einer übergeordneten zusammenfassen (S. 270). Das macht diese Seite.</li>
+      <li>SKYLINE2: Balkenhöhe = Dauer. SKYLINE: Balkenhöhe = 60 / Dauer, also Metronomwert (S. 245–253).</li>
+      <li>Vollbögen und Halbbögen von Hand einzeichnen, dann dirigierend mithören (S. 261, 293, 301).</li>
+    </ol>
+  </details>
+
+  <p class="source">Hörbeispiele: Hermann Gottschewski, Webseite zur Dissertation (fusehime.c.u-tokyo.ac.jp/gottschewski). Welte-Mignon-Rollen Reinecke Nr. 237, Saint-Saëns 807, Scharwenka 242, Pugno 548, Busoni 441. Eigene Analysen: Audiodateien der Stanford University Libraries zu den Welte-Mignon-Rollen 207, 2979, 419, 1275, 1208 und 2555 aus der Sammlung Denis Condon (SUPRA, purl.stanford.edu), abgerufen am 10.11.2026.</p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const audio = $('audio');
+const canvas = $('chart');
+
+const state = {
+  taps: exampleTaps(),
+  example: true,
+  mode: 'duration',
+  clock: 'free',
+};
+
+function exampleTaps() {
+  const halfBars = Array.from({ length: 16 }, (_, i) =>
+    1.0 - 0.25 * Math.sin(Math.PI * (i + 0.5) / 16) - 0.06 * Math.sin(Math.PI * ((i % 4) + 0.5) / 4));
+  return halfBars.reduce((times, d) => [...times, times[times.length - 1] + d], [0]);
+}
+
+function levelSizes(perBar, tapCount) {
+  const below = perBar === 4 ? [1, 2] : [1];
+  const sizes = [...below, perBar, perBar * 2, perBar * 4, perBar * 8, perBar * 16];
+  return [...new Set(sizes)].filter(size => size <= tapCount - 1);
+}
+
+function unitsOfSize(times, size) {
+  const count = Math.floor((times.length - 1) / size);
+  return Array.from({ length: count }, (_, k) => {
+    const start = times[k * size];
+    const end = times[(k + 1) * size];
+    return { start, end, duration: end - start };
+  });
+}
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function niceStep(max, targetLines) {
+  const raw = max / targetLines;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const multiple = [1, 2, 2.5, 5, 10].find(m => m * magnitude >= raw);
+  return multiple * magnitude;
+}
+
+function draw() {
+  const perBar = Number($('perBar').value);
+  const firstBar = Number($('firstBar').value) || 0;
+  const times = state.taps.map(t => t - state.taps[0]);
+  const sizes = levelSizes(perBar, times.length);
+  const levels = sizes.map(size => ({ size, units: unitsOfSize(times, size) }));
+
+  const wrapWidth = $('wrap').clientWidth;
+  const total = times.length > 1 ? times[times.length - 1] : 1;
+  const margin = { left: 52, right: 16, top: 16, bottom: 40 };
+  const width = Math.max(wrapWidth, Math.ceil(total * 24) + margin.left + margin.right);
+  const height = wrapWidth < 560 ? 320 : 440;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = width * ratio;
+  canvas.height = height * ratio;
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const fg = cssVar('--fg');
+  const rule = cssVar('--rule');
+  const barRgb = cssVar('--bar-rgb');
+  const font = '12px ' + cssVar('--mono');
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+  const value = unit => state.mode === 'duration' ? unit.duration : 60 / unit.duration;
+  const values = levels.flatMap(level => level.units.map(value));
+  const yMax = values.length ? Math.max(...values) * 1.08 : 1;
+  const x = t => margin.left + (t / total) * plotW;
+  const y = v => margin.top + plotH - (v / yMax) * plotH;
+
+  const step = niceStep(yMax, 6);
+  const gridValues = Array.from({ length: Math.floor(yMax / step) }, (_, i) => (i + 1) * step);
+  ctx.font = font;
+  ctx.fillStyle = fg;
+  ctx.strokeStyle = rule;
+  ctx.lineWidth = 1;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  gridValues.forEach(v => {
+    ctx.beginPath();
+    ctx.setLineDash([2, 3]);
+    ctx.moveTo(margin.left, y(v));
+    ctx.lineTo(width - margin.right, y(v));
+    ctx.stroke();
+    ctx.fillText(Number.isInteger(v) ? String(v) : v.toFixed(1), margin.left - 8, y(v));
+  });
+  ctx.setLineDash([]);
+
+  const ordered = state.mode === 'duration' ? [...levels].reverse() : levels;
+  ordered.forEach(level => {
+    const rank = sizes.indexOf(level.size);
+    const shade = state.mode === 'duration' ? 0.05 + 0.14 * (sizes.length - 1 - rank) / Math.max(1, sizes.length - 1) : 0;
+    level.units.forEach(unit => {
+      const left = x(unit.start);
+      const right = x(unit.end);
+      const top = y(value(unit));
+      const bottom = y(0);
+      if (shade > 0) {
+        ctx.fillStyle = `rgba(${barRgb}, ${shade + 0.06})`;
+        ctx.fillRect(left, top, right - left, bottom - top);
+      }
+      ctx.strokeStyle = fg;
+      ctx.lineWidth = level.size >= perBar * 2 ? 1.5 : 1;
+      ctx.strokeRect(left + 0.5, top + 0.5, right - left, bottom - top);
+    });
+  });
+
+  ctx.strokeStyle = fg;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, y(0) + 0.5);
+  ctx.lineTo(width - margin.right, y(0) + 0.5);
+  ctx.stroke();
+
+  const barStarts = times.filter((_, i) => i % perBar === 0);
+  const minGap = 30;
+  const every = Math.max(1, Math.ceil(minGap / (plotW / Math.max(1, barStarts.length))));
+  ctx.fillStyle = fg;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  barStarts.forEach((t, k) => {
+    if (k % every === 0) ctx.fillText(String(firstBar + k), x(t), y(0) + 8);
+  });
+
+  $('axisLabel').textContent = state.mode === 'duration' ? 'Dauer in s' : 'Metronomwert (1/min) der jeweiligen Einheit';
+  $('legend').textContent = levels.length ? 'Ebenen: ' + levels.map(l => tapLabel(l.size, perBar)).join(' · ') : '';
+  $('count').textContent = `${state.taps.length} Tipps`;
+}
+
+function tapLabel(size, perBar) {
+  const bars = size / perBar;
+  if (bars >= 1) return `${bars} T.`;
+  return size === 1 ? `1/${perBar} T.` : `${size}/${perBar} T.`;
+}
+
+function syncData() {
+  $('data').value = state.taps.map(t => t.toFixed(3)).join('\n');
+  $('state').textContent = state.example
+    ? 'Beispiel (konstruiert): ein Tempobogen über acht Takte'
+    : 'Eigene Messung';
+}
+
+function render() { draw(); syncData(); }
+
+function startMeasuring() {
+  if (state.example) {
+    state.taps = [];
+    state.example = false;
+  }
+}
+
+// The first tap fixes the clock: the recording's own time if it is playing, otherwise the wall clock.
+function tapTime() {
+  if (state.taps.length === 0) state.clock = audio.paused ? 'free' : 'audio';
+  if (state.clock === 'free') return performance.now() / 1000;
+  return audio.paused ? null : audio.currentTime;
+}
+
+function tap() {
+  startMeasuring();
+  const now = tapTime();
+  if (now === null) {
+    $('state').textContent = 'Die Aufnahme ist angehalten. Zum Weitertippen auf Abspielen drücken.';
+    return;
+  }
+  state.taps = [...state.taps, now];
+  $('pad').classList.add('flash');
+  setTimeout(() => $('pad').classList.remove('flash'), 80);
+  render();
+}
+
+function loadSource(value) {
+  if (value === 'file') {
+    $('file').click();
+    return;
+  }
+  audio.src = value;
+  audio.playbackRate = Number($('rate').value);
+  $('play').textContent = 'Abspielen';
+}
+
+$('source').addEventListener('change', e => loadSource(e.target.value));
+$('file').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  audio.src = URL.createObjectURL(file);
+  $('play').textContent = 'Abspielen';
+});
+$('play').addEventListener('click', () => {
+  if (!audio.src) loadSource($('source').value);
+  if (audio.paused) {
+    audio.playbackRate = Number($('rate').value);
+    audio.play().catch(() => { $('state').textContent = 'Die Aufnahme ließ sich nicht abspielen. Bitte eine andere wählen.'; });
+  } else {
+    audio.pause();
+  }
+});
+audio.addEventListener('play', () => { $('play').textContent = 'Anhalten'; });
+audio.addEventListener('pause', () => { $('play').textContent = 'Abspielen'; });
+$('rewind').addEventListener('click', () => { audio.currentTime = 0; });
+$('rate').addEventListener('change', e => { audio.playbackRate = Number(e.target.value); });
+
+$('pad').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
+$('pad').addEventListener('click', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  const typing = ['TEXTAREA', 'INPUT', 'SELECT'].includes(document.activeElement.tagName);
+  if (typing || e.repeat) return;
+  if (e.code === 'Space') { e.preventDefault(); tap(); }
+  if (e.code === 'Backspace') { e.preventDefault(); undo(); }
+});
+
+function undo() {
+  if (state.example) return;
+  state.taps = state.taps.slice(0, -1);
+  render();
+}
+$('undo').addEventListener('click', undo);
+$('clear').addEventListener('click', () => {
+  state.taps = [];
+  state.example = false;
+  audio.pause();
+  audio.currentTime = 0;
+  render();
+});
+
+['perBar', 'firstBar'].forEach(id => ['change', 'input'].forEach(type => $(id).addEventListener(type, draw)));
+function setMode(mode) {
+  state.mode = mode;
+  $('mode2').setAttribute('aria-pressed', String(mode === 'duration'));
+  $('mode1').setAttribute('aria-pressed', String(mode === 'tempo'));
+  draw();
+}
+$('mode2').addEventListener('click', () => setMode('duration'));
+$('mode1').addEventListener('click', () => setMode('tempo'));
+
+$('apply').addEventListener('click', () => {
+  const parsed = $('data').value.split(/[\s,;]+/).map(s => Number(s.replace(',', '.'))).filter(Number.isFinite);
+  state.taps = [...parsed].sort((a, b) => a - b);
+  state.example = false;
+  render();
+});
+$('copy').addEventListener('click', () => {
+  const text = $('data').value;
+  navigator.clipboard.writeText(text)
+    .then(() => { $('copyState').textContent = 'Kopiert'; })
+    .catch(() => { $('data').select(); $('copyState').textContent = 'Markiert, bitte mit Cmd/Strg+C kopieren'; });
+});
+
+new ResizeObserver(draw).observe($('wrap'));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+loadSource($('source').value);
+render();
+document.fonts?.ready.then(draw);
+</script>

@@ -1,0 +1,38 @@
+[
+ {
+  "druid": "jw822wm2644",
+  "label": "Welte-Mignon 1275",
+  "selector": "Grieg · Grieg, Schmetterling · WM 1275",
+  "seconds": 123.637
+ },
+ {
+  "druid": "yg150mb0559",
+  "label": "Welte-Mignon 207",
+  "selector": "Grünfeld · Schumann, Des Abends · WM 207",
+  "seconds": 183.023
+ },
+ {
+  "druid": "gf160gq3516",
+  "label": "Welte-Mignon 2979",
+  "selector": "d'Albert · Chopin, Nocturne op. 9,1 · WM 2979",
+  "seconds": 268.068
+ },
+ {
+  "druid": "xj540rr2929",
+  "label": "Welte-Mignon 1208",
+  "selector": "Pachmann · Schumann, Vogel als Prophet · WM 1208",
+  "seconds": 146.482
+ },
+ {
+  "druid": "jf938sf5847",
+  "label": "Welte-Mignon 2555",
+  "selector": "Paur · Brahms, Intermezzo op. 117,2 · WM 2555",
+  "seconds": 242.254
+ },
+ {
+  "druid": "fr853pn6519",
+  "label": "Welte-Mignon 419",
+  "selector": "d'Albert · Chopin, Polonaise op. 53 · WM 419",
+  "seconds": 411.945
+ }
+]

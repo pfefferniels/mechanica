@@ -1,0 +1,61 @@
+/* Layout: the 1920×1080 slide canvas scaled into the window above a slim control bar; notes and contents open as panels over the slide. */
+:root {
+  --bg: #ffffff;
+  --fg: #000000;
+  --rule: #e5e7eb;
+  --fill: #f3f4f6;
+  --font: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+#viewport { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center center; }
+
+#bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  padding: 6px max(12px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  border-top: 1px solid var(--rule); background: var(--bg);
+}
+#bar button { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--fg); border-radius: 3px; padding: 3px 10px; cursor: pointer; }
+#bar button:hover { background: var(--fill); }
+#bar button[aria-expanded="true"] { background: var(--fg); color: var(--bg); }
+#bar button:focus-visible, .panel a:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.readout { font-variant-numeric: tabular-nums; min-width: 6ch; text-align: center; }
+.apps { margin-left: auto; display: flex; gap: 14px; }
+.apps a, .panel a { color: var(--fg); }
+
+.panel {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: auto; box-sizing: border-box;
+  background: var(--bg); border-top: 1px solid var(--rule); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  padding: 14px max(16px, env(safe-area-inset-left, 0px)) 18px; line-height: 1.5; white-space: pre-wrap;
+}
+#contents { white-space: normal; }
+#contents ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+#contents a { display: inline-block; min-width: 3.5ch; font-variant-numeric: tabular-nums; }
+.keys { margin: 12px 0 0; }
+
+/* The slide format: a closed subset of HTML and CSS on a fixed canvas, every style inline. */
+.slide {
+  position: absolute; inset: 0; width: 1920px; height: 1080px; box-sizing: border-box; overflow: hidden;
+  font-family: var(--font); color: #000000; background: #ffffff;
+  opacity: 0; visibility: hidden; transition: opacity 0.35s ease, visibility 0s linear 0.35s;
+}
+.slide.current { opacity: 1; visibility: visible; transition: opacity 0.35s ease, visibility 0s; }
+.slide * { margin: 0; box-sizing: border-box; }
+.slide h1 { font-size: 96px; font-weight: 600; line-height: 1.1; }
+.slide h2 { font-size: 64px; font-weight: 600; line-height: 1.15; }
+.slide h3 { font-size: 44px; font-weight: 600; line-height: 1.2; }
+.slide p { font-size: 32px; line-height: 1.4; }
+.slide ul, .slide ol { padding-left: 1.3em; }
+.slide img, .slide video { display: block; }
+.slide table { border-collapse: collapse; }
+.slide th, .slide td { padding: 0.35em 0.6em; border-bottom: 1px solid rgba(0, 0, 0, 0.25); text-align: left; }
+.slide aside { display: none !important; }
+.slide a { color: inherit; }
+.slide img[data-video], .slide img[data-youtube] { cursor: pointer; }
+.crop { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide, .slide.current { transition: none; }
+}

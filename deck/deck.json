@@ -1,0 +1,176 @@
+{
+  "v": 4,
+  "attachments": {},
+  "cover": "cover",
+  "createdOnFiles": {
+    "at": "2026-11-08T10:05:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "faces": {
+    "ibm-plex-mono": {
+      "family": "IBM Plex Mono",
+      "href": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+    }
+  },
+  "lists": "css",
+  "order": [
+    "cover",
+    "minerva-film",
+    "minerva-satyr",
+    "minerva-offen",
+    "minerva-walze",
+    "minerva-stueck2",
+    "minerva-amphion",
+    "handel-uhr",
+    "handel-alla-fama",
+    "handel-arianna",
+    "handel-walze",
+    "handel-holland",
+    "auto-vaucanson",
+    "auto-strasser",
+    "auto-haydn",
+    "auto-musicienne",
+    "auto-welte",
+    "welte-walze",
+    "welte-cottage-1907",
+    "repro-1",
+    "repro-2",
+    "repro-3",
+    "firmen",
+    "anz-ad009",
+    "anz-ad116",
+    "anz-ad039",
+    "anz-ad197",
+    "anz-ad104",
+    "anz-ad102",
+    "anz-ad077",
+    "komp-1",
+    "komp-2",
+    "widmung-1755",
+    "dm-instrument",
+    "k17",
+    "dm-rollenkasten",
+    "dm-rolle",
+    "c77c6e5a",
+    "k18",
+    "k19",
+    "k20",
+    "nuancierbalg",
+    "k21",
+    "k22",
+    "k23",
+    "a03773c7",
+    "abb5-1",
+    "abb5-2",
+    "abb5-3",
+    "abb5-4",
+    "abb5-5",
+    "abb5-6",
+    "abb5-7",
+    "abb6-1",
+    "abb6-2",
+    "abb6-3",
+    "abb6-4",
+    "abb6-5",
+    "regeln-tabelle",
+    "t98-regeln",
+    "gruen-1",
+    "gruen-2",
+    "gruen-3",
+    "gruen-4",
+    "var-kopien",
+    "var-fassungen",
+    "var-sforzando",
+    "var-licensee",
+    "rei-hoeren",
+    "rei-partituren",
+    "rei-asynchron",
+    "rei-hill1",
+    "rei-hill3",
+    "sky-reinecke",
+    "sky-bild5",
+    "op15-prospekt",
+    "op15-saintsaens",
+    "op15-scharwenka",
+    "op15-pugno",
+    "op15-busoni",
+    "op15-mittelteil",
+    "op15-akustisch",
+    "sky-uebung",
+    "schluss-rats",
+    "schluss-grenzen",
+    "schluss-freispielen",
+    "schluss-rubato",
+    "b141c3e2",
+    "592ef519",
+    "aufnahmen-finden",
+    "04e68e8a"
+  ],
+  "sections": {
+    "s0": {
+      "description": "Triumphwagen mit Minerva (um 1625/30): Stiftwalze, Artikulation, zwei Versionen derselben Musik",
+      "start": "cover"
+    },
+    "s0b": {
+      "description": "Händel und Orgeluhren: Clay-Uhren, Verzierungen nach Baines 2017, Holland-Orgel",
+      "start": "handel-uhr"
+    },
+    "s0c": {
+      "description": "Vorschläge 18./19. Jahrhundert: Vaucanson, Mozart KV 608, Strasser, Haydn-Flötenuhr, Engramelle, Jaquet-Droz, Welte-Orchestrion",
+      "start": "auto-vaucanson"
+    },
+    "s0c2": {
+      "before": null,
+      "description": "Kunstspielklavier (Phonola) und andere Reproduktionsklaviere: Hupfeld, Philipps, Aeolian, Ampico, Welte (Licensee)",
+      "start": "repro-1"
+    },
+    "s0c3": {
+      "description": "Welte-Anzeigen 1905–1924 und ihre Motive, nach der Edition anz.welte225.org",
+      "start": "anz-ad009"
+    },
+    "s0d": {
+      "description": "Komponistinnen und Komponisten, die auf Welte-Mignon eigene Werke spielen, nach dem Freiburger Rollenverzeichnis",
+      "start": "komp-1"
+    },
+    "s0e": {
+      "description": "Begleitrolle: Schumann, Widmung, gespielt von Henry R. Bird, Welte-Mignon 1755 (1909)",
+      "start": "widmung-1755"
+    },
+    "s1": {
+      "before": null,
+      "description": "Wie die Welte-Mignon funktioniert: Welte-Piano im Deutschen Museum, Rolle, Gleitblock, Ventile, Nuancierbalg, Anschlag",
+      "start": "dm-instrument"
+    },
+    "s2": {
+      "description": "Leseregeln T-100: Abb. 5 und 6 Schritt für Schritt",
+      "start": "abb5-1"
+    },
+    "s3": {
+      "description": "Grüne T-98-Rollen und Überleitung zu den Varianten",
+      "start": "gruen-1"
+    },
+    "s3b": {
+      "description": "Varianten zwischen Kopien der Welte-Rolle 225 (Grünfeld, Träumerei), Abbildungen aus der Dissertation",
+      "start": "var-kopien"
+    },
+    "s4": {
+      "description": "Carl Reinecke spielt Mozarts Larghetto KV 537 (Welte 237, 1905): Partituren und Hill 2008",
+      "start": "rei-hoeren"
+    },
+    "s5": {
+      "before": null,
+      "description": "SKYLINE und SKYLINE2 nach Gottschewski, an Reineckes Mozart-Larghetto, mit Übung",
+      "start": "sky-reinecke"
+    },
+    "s6": {
+      "description": "Chopin op. 15,2 in vier Welte-Aufnahmen von 1905, nach Gottschewski",
+      "start": "op15-prospekt"
+    },
+    "s7": {
+      "description": "Künstlerische Schlüsse: RATS nach Robert Hill, die eigenen Grenzen, Freispielen, Tempo rubato",
+      "start": "schluss-rats"
+    }
+  },
+  "title": "Was wir von mechanischen Musikinstrumenten lernen können"
+}
