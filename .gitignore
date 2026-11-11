@@ -1,4 +1,4 @@
-build/
+/build/
 op15/
 _site/
 __pycache__/
