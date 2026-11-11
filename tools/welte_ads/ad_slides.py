@@ -7,10 +7,7 @@ from pathlib import Path
 
 BOX_W, BOX_H = 900, 800
 TOTAL_ADS = 195
-EDITION = (
-    "ediert in: Niels Pfeffer (Hrsg.), <i>Welte-Mignon Advertisements Collection</i>, Version 0.10.0, 2026, "
-    "https://anz.welte225.org/{ad}/, abgerufen am 10.11.2026."
-)
+EDITION = " Diese und die folgenden Anzeigen nach https://anz.welte225.org, abgerufen am 10.11.2026."
 
 
 @dataclass(frozen=True)
@@ -31,9 +28,9 @@ class AdSlide:
         scale = min(BOX_W / w, BOX_H / h)
         return round(w * scale), round(h * scale)
 
-    def html(self) -> str:
+    def html(self, edition_note: str = "") -> str:
         w, h = self.image_box()
-        caption = f"{self.source}; {EDITION.format(ad=self.ad)}"
+        caption = f"{self.source}.{edition_note}"
         notes = f"{self.notes}\nMotiv „{self.topic}“ in {self.ads_with_topic} von {TOTAL_ADS} Anzeigen der Edition: https://anz.welte225.org/topic/{self.topic}/"
         return "\n".join([
             f'<section id="anz-{self.ad}" data-transition="fade" style="background:#ffffff;color:#000000;'
@@ -139,5 +136,6 @@ SLIDES = [
 if __name__ == "__main__":
     out = Path(sys.argv[1])
     for s in SLIDES:
-        (out / f"anz-{s.ad}.html").write_text(s.html() + "\n", encoding="utf-8")
+        edition_note = EDITION if s is SLIDES[0] else ""
+        (out / f"anz-{s.ad}.html").write_text(s.html(edition_note) + "\n", encoding="utf-8")
         print(f"anz-{s.ad}", s.image_box())

@@ -7,8 +7,8 @@ const PRESENTER = new URLSearchParams(location.search).has("presenter");
 const PRESENTER_WINDOW = "mechanica-presenter";
 
 const els = Object.fromEntries(["viewport", "stage", "prev", "next", "counter", "contents", "toggle-contents", "fullscreen",
-  "open-presenter", "presenter", "presenter-counter", "presenter-timer", "presenter-clock", "next-viewport", "next-stage",
-  "presenter-notes"].map((id) => [id, document.getElementById(id)]));
+  "open-presenter", "presenter", "presenter-counter", "presenter-timer", "presenter-clock", "next-viewport", "next-stage"]
+  .map((id) => [id, document.getElementById(id)]));
 const slides = [...document.querySelectorAll("#stage > .slide")];
 const state = { index: -1, startedAt: Date.now() };
 // Keeps the main window and the presenter window on the same slide.
@@ -83,8 +83,6 @@ function stopMedia(slide) {
 }
 
 /* ---------- presenter window ---------- */
-const notesOf = (slide) => slide.querySelector("aside")?.textContent.trim() || "Keine Notizen zu dieser Folie.";
-
 function previewOf(slide) {
   if (!slide) return Object.assign(document.createElement("p"), { className: "end", textContent: "Ende" });
   const copy = slide.cloneNode(true);
@@ -94,9 +92,7 @@ function previewOf(slide) {
 }
 
 function renderPresenter() {
-  const slide = slides[state.index];
   els["presenter-counter"].textContent = `${state.index + 1} / ${slides.length}`;
-  els["presenter-notes"].textContent = notesOf(slide);
   els["next-stage"].replaceChildren(previewOf(slides[state.index + 1]));
 }
 
