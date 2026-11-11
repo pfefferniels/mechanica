@@ -6,8 +6,8 @@ Musikinstrumenten lernen können“ (Niels Pfeffer), ZHdK, HIPE Werkstatt 4,
 
 Site: https://pfefferniels.github.io/mechanica/
 
-- **Slides** (`/`): arrow keys or space to page, N for speaker notes, I for
-  contents, F for full screen. A slide's address is `#slide-N`.
+- **Slides** (`/`): arrow keys or space to page, I for contents, F for full
+  screen. A slide's address is `#slide-N`.
 - **Rollenlabor** (`/rollenlabor/`): red Welte-Mignon rolls on Stanford's
   scans. Holes are clickable; marks give distances, times and notes; the
   emulated bellows travel of bass and treble runs under the roll; playback of
@@ -18,8 +18,8 @@ Site: https://pfefferniels.github.io/mechanica/
 ## Layout
 
 - `deck/`: `deck.json` and one `<section>` per slide, as written in the Slides
-  artifact the workshop was presented from; `assets/` holds their images and
-  videos.
+  artifact the workshop was presented from, without the speaker notes
+  (`tools/site/strip_notes.py`); `assets/` holds their images and videos.
 - `viewer/`: page template, styles and script of the static slide viewer.
 - `rollenlabor/`, `skyline/`: the apps (artifact pages; the build adds the
   document shell).

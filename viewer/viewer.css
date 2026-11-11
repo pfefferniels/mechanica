@@ -1,4 +1,4 @@
-/* Layout: the 1920×1080 slide canvas scaled into the window above a slim control bar; notes and contents open as panels over the slide. */
+/* Layout: the 1920×1080 slide canvas scaled into the window above a slim control bar; the contents open as a panel over the slide. */
 :root {
   --bg: #ffffff;
   --fg: #000000;
@@ -28,9 +28,8 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .panel {
   position: absolute; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: auto; box-sizing: border-box;
   background: var(--bg); border-top: 1px solid var(--rule); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
-  padding: 14px max(16px, env(safe-area-inset-left, 0px)) 18px; line-height: 1.5; white-space: pre-wrap;
+  padding: 14px max(16px, env(safe-area-inset-left, 0px)) 18px; line-height: 1.5;
 }
-#contents { white-space: normal; }
 #contents ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 #contents a { display: inline-block; min-width: 3.5ch; font-variant-numeric: tabular-nums; }
 .keys { margin: 12px 0 0; }

@@ -1,7 +1,8 @@
 """Builds the static site: the deck as one page with a viewer, and the two apps beside it.
 
 The deck in deck/ is a copy of the files of the Slides artifact (deck.json and one
-<section> per slide in slides/); media referenced as /_blob/<id> lie in assets/.
+<section> per slide in slides/), without speaker notes; media referenced as
+/_blob/<id> lie in assets/.
 The apps are artifact pages without a document shell, so they are wrapped here.
 
 Usage: python3 tools/site/build_site.py <repo-root> <out-dir>
@@ -81,6 +82,7 @@ def with_youtube_player(section):
 def slide_markup(path, assets, number):
     soup = BeautifulSoup(localised(path.read_text(encoding="utf-8"), assets), "html.parser")
     section = soup.find("section")
+    [aside.decompose() for aside in section.find_all("aside")]
     [with_default_display(tag) for tag in [section, *section.find_all("div")]]
     with_youtube_player(section)
     [deferred(img) for img in section.find_all("img")]

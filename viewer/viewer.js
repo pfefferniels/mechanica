@@ -4,8 +4,8 @@ const CANVAS = { width: 1920, height: 1080 };
 const PRELOAD = 2;
 const SWIPE_PX = 50;
 
-const els = Object.fromEntries(["viewport", "stage", "prev", "next", "counter", "notes", "contents", "toggle-notes",
-  "toggle-contents", "fullscreen"].map((id) => [id, document.getElementById(id)]));
+const els = Object.fromEntries(["viewport", "stage", "prev", "next", "counter", "contents", "toggle-contents", "fullscreen"]
+  .map((id) => [id, document.getElementById(id)]));
 const slides = [...document.querySelectorAll(".slide")];
 const state = { index: -1 };
 
@@ -73,11 +73,6 @@ function stopMedia(slide) {
 }
 
 /* ---------- navigation ---------- */
-function notesOf(slide) {
-  const aside = slide.querySelector("aside");
-  return aside ? aside.textContent.trim() : "Keine Notizen zu dieser Folie.";
-}
-
 function show(index) {
   const next = clamp(index, 0, slides.length - 1);
   if (next === state.index) return;
@@ -87,7 +82,6 @@ function show(index) {
   slides.slice(Math.max(0, next - 1), next + PRELOAD + 1).forEach(load);
   slides[next].classList.add("current");
   els.counter.textContent = `${next + 1} / ${slides.length}`;
-  els.notes.textContent = notesOf(slides[next]);
   els.prev.disabled = next === 0;
   els.next.disabled = next === slides.length - 1;
   const hash = `#slide-${next + 1}`;
@@ -99,11 +93,9 @@ const indexOfHash = () => {
   return match ? Number(match[1]) - 1 : 0;
 };
 
-function togglePanel(panel, button, open = panel.hidden) {
-  [[els.notes, els["toggle-notes"]], [els.contents, els["toggle-contents"]]]
-    .forEach(([other, otherButton]) => { other.hidden = true; otherButton.setAttribute("aria-expanded", "false"); });
-  panel.hidden = !open;
-  button.setAttribute("aria-expanded", String(open));
+function toggleContents(open = els.contents.hidden) {
+  els.contents.hidden = !open;
+  els["toggle-contents"].setAttribute("aria-expanded", String(open));
 }
 
 function toggleFullscreen() {
@@ -115,8 +107,7 @@ const KEYS = {
   ArrowRight: () => show(state.index + 1), ArrowDown: () => show(state.index + 1), PageDown: () => show(state.index + 1), " ": () => show(state.index + 1),
   ArrowLeft: () => show(state.index - 1), ArrowUp: () => show(state.index - 1), PageUp: () => show(state.index - 1),
   Home: () => show(0), End: () => show(slides.length - 1),
-  n: () => togglePanel(els.notes, els["toggle-notes"]), i: () => togglePanel(els.contents, els["toggle-contents"]),
-  f: toggleFullscreen, Escape: () => togglePanel(els.notes, els["toggle-notes"], false),
+  i: () => toggleContents(), f: toggleFullscreen, Escape: () => toggleContents(false),
 };
 
 function bindSwipe() {
@@ -139,9 +130,8 @@ function start() {
   });
   els.prev.addEventListener("click", () => show(state.index - 1));
   els.next.addEventListener("click", () => show(state.index + 1));
-  els["toggle-notes"].addEventListener("click", () => togglePanel(els.notes, els["toggle-notes"]));
-  els["toggle-contents"].addEventListener("click", () => togglePanel(els.contents, els["toggle-contents"]));
-  els.contents.addEventListener("click", (event) => { if (event.target.closest("a")) togglePanel(els.contents, els["toggle-contents"], false); });
+  els["toggle-contents"].addEventListener("click", () => toggleContents());
+  els.contents.addEventListener("click", (event) => { if (event.target.closest("a")) toggleContents(false); });
   els.fullscreen.addEventListener("click", toggleFullscreen);
   document.addEventListener("keydown", (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest("input, textarea, select")) return;
