@@ -17,15 +17,25 @@
   <ol>
 {{contents}}
   </ol>
-  <p class="keys">Pfeiltasten oder Leertaste blättern, I Inhalt, F Vollbild.</p>
+  <p class="keys">Pfeiltasten oder Leertaste blättern, I Inhalt, F Vollbild, S Referentenansicht.</p>
 </section>
 </main>
+<aside id="presenter" hidden aria-label="Referentenansicht">
+  <div class="presenter-head">
+    <span id="presenter-counter" class="readout"></span>
+    <button id="presenter-timer" type="button" class="readout" title="Klick setzt die Zeit zurück">0:00</button>
+    <span id="presenter-clock" class="readout"></span>
+  </div>
+  <div id="next-viewport" aria-label="Nächste Folie"><div id="next-stage"></div></div>
+  <div id="presenter-notes"></div>
+</aside>
 <nav id="bar" aria-label="Folien">
   <button id="prev" type="button" aria-label="Vorige Folie">←</button>
   <span id="counter" class="readout" aria-live="polite"></span>
   <button id="next" type="button" aria-label="Nächste Folie">→</button>
   <button id="toggle-contents" type="button" aria-expanded="false" aria-controls="contents">Inhalt</button>
   <button id="fullscreen" type="button">Vollbild</button>
+  <button id="open-presenter" type="button">Referentenansicht</button>
   <span class="apps">{{apps}}</span>
 </nav>
 <script src="viewer/viewer.js"></script>
