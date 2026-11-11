@@ -48,6 +48,7 @@
     "komp-1",
     "komp-2",
     "widmung-1755",
+    "bauformen",
     "dm-instrument",
     "k17",
     "dm-rollenkasten",
@@ -139,8 +140,8 @@
     },
     "s1": {
       "before": null,
-      "description": "Wie die Welte-Mignon funktioniert: Welte-Piano im Deutschen Museum, Rolle, Gleitblock, Ventile, Nuancierbalg, Anschlag",
-      "start": "dm-instrument"
+      "description": "Wie die Welte-Mignon funktioniert: Bauformen (Flügel, Klavier, Kabinett, Vorsetzer), Welte-Piano im Deutschen Museum, Rolle, Gleitblock, Ventile, Nuancierbalg, Anschlag",
+      "start": "bauformen"
     },
     "s2": {
       "description": "Leseregeln T-100: Abb. 5 und 6 Schritt für Schritt",
