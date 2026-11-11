@@ -18,7 +18,8 @@ const APP = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = APP;
 const SUPRA_MIDI = join(APP, "../../roll-nuance-tracer/cache/SUPRA/welte-red/midi-raw");
 const SUPRA_REMOTE = "https://raw.githubusercontent.com/pianoroll/SUPRA/master/welte-red/midi-raw";
-const SOUNDFONT = join(process.env.HOME, "Downloads/Dokumente/Full Grand Piano.sf2");
+const PIANOTEQ = "/Applications/Pianoteq 9/Pianoteq 9.app/Contents/MacOS/Pianoteq 9";
+const PRESET = "NY Steinway D Classical";
 const HALVES = ["bass", "treble"];
 const STEP_MM = 1;
 const RUN_OUT_ROWS = 600;
@@ -95,10 +96,10 @@ function noteEvents(notes, emulation, secondsOf) {
   return notes.flatMap((note) => [noteOn(ms(note.rowOn), 0, note.key, velocityAt(note)), noteOff(ms(note.rowOff), 0, note.key)]);
 }
 
-// Switch mode: fluidsynth reads CC 64 as on/off at 64.
+// Continuous CC 64 and 67: Pianoteq models half-pedal and the dampers' travel.
 function pedalEvents(emulation, secondsOf) {
   const tickAt = (index) => Math.round(secondsOf(emulation.grid.rowAt(index)) * 1000);
-  return pedalMessages(emulation.pedals, tickAt, { mode: "switch" });
+  return pedalMessages(emulation.pedals, tickAt);
 }
 
 // A static gain keeps the rendering's dynamics; only the level is raised.
@@ -113,7 +114,7 @@ function renderAudio(druid, events) {
   const wavPath = join(OUT, "audio", `${druid}.wav`);
   const sorted = [setTempo(0, 1_000_000), ...events].sort((a, b) => a.tick - b.tick);
   writeFileSync(midiPath, writeSmf(1000, [sorted]));
-  execFileSync("fluidsynth", ["-ni", "-q", "-r", "44100", "-g", "0.8", "-F", wavPath, SOUNDFONT, midiPath]);
+  execFileSync(PIANOTEQ, ["--headless", "--preset", PRESET, "--mono", "--midi", midiPath, "--wav", wavPath], { stdio: "ignore" });
   const gain = -2 - peakDb(wavPath);
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", wavPath, "-af", `volume=${gain.toFixed(1)}dB`, "-ac", "1", "-b:a", "96k", join(OUT, "audio", `${druid}.mp3`)]);
   execFileSync("rm", [wavPath, midiPath]);

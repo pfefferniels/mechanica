@@ -54,5 +54,5 @@ are quoted with their full reference.
 Roll scans, MIDI and audio renderings derive from the Stanford University
 Libraries (Denis Condon Collection; SUPRA). SUPRA's MIDI files are licensed CC
 BY-NC-SA 4.0; for publishing or reproducing items, Stanford asks to contact the
-Stanford Archive of Recorded Sound. The audio in the apps is a FluidSynth
-rendering of an emulation, not a recording of an instrument.
+Stanford Archive of Recorded Sound. The audio in the Rollenlabor is a Pianoteq
+rendering (NY Steinway D) of an emulation, not a recording of an instrument.

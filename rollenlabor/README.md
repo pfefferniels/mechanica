@@ -20,7 +20,8 @@ Gottschewski's spool axis) and writes `data/<druid>.json`,
 `audio/<druid>.mp3` and the entry in `rolls.json`. German title,
 performer, recording date and notes for the selector come from
 `build/catalogue.json`. Velocities follow `velocityOf` in linked-rolls. Audio is
-rendered with fluidsynth and `~/Downloads/Dokumente/Full Grand Piano.sf2`.
+rendered with Pianoteq 9 (preset NY Steinway D Classical), damper and hammer
+rail as continuous CC 64 and 67.
 
 Then the facsimile tiles, from `../tools/facsimile`:
 
