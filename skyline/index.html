@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: one working column — controls, tap pad, the graph across the full width, then the raw data. */
+/* Layout: one working column: controls, tap pad, the graph across the full width, then the raw data. */
 :root {
   --bg: #ffffff;
   --fg: #000000;
@@ -32,9 +32,6 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 main { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
-h1 { font-size: 28px; font-weight: 500; margin: 0; text-wrap: balance; }
-p { margin: 0; max-width: 70ch; }
-.source { font-size: 13px; }
 .row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 select, input, button, textarea { font: inherit; color: var(--fg); background: var(--bg); }
@@ -61,16 +58,10 @@ canvas { display: block; }
 textarea { width: 100%; min-height: 9em; border: 1px solid var(--fg); padding: 8px; font-variant-numeric: tabular-nums; box-sizing: border-box; }
 details summary { cursor: pointer; }
 details[open] summary { margin-bottom: 12px; }
-.steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; max-width: 75ch; }
 @media (prefers-reduced-motion: reduce) { #pad.flash { opacity: 1; } }
 </style>
 
 <main>
-  <header style="display:flex;flex-direction:column;gap:8px">
-    <h1>Skyline-Werkstatt</h1>
-    <p>Mittippen, Dauern paarweise zusammenfassen, als SKYLINE2 (Dauer) oder SKYLINE (Tempo) zeichnen. Nach Hermann Gottschewski, <i>Die Interpretation als Kunstwerk</i>, Laaber 1996, S. 245–257 und 269f.</p>
-  </header>
-
   <section class="row" aria-label="Aufnahme">
     <label for="source">Aufnahme
       <select id="source">
@@ -154,20 +145,6 @@ details[open] summary { margin-bottom: 12px; }
       </div>
     </div>
   </details>
-
-  <details>
-    <summary>Vorgehen nach Gottschewski</summary>
-    <ol class="steps">
-      <li>Mehrmals hören, abschnittsweise (S. 270).</li>
-      <li>Festlegen, welcher Ton als Schlag zählt: in op. 15,2 außen der Basston, im Mittelteil der oberste Melodieton (S. 269). Bei Reinecke die Halbtaktschläge der Melodie (Tempoarchitektur, S. 107).</li>
-      <li>Ab dem ersten vollen Takt mittippen. Gottschewski nennt Fehler bis 0,2 s und hält das für die Zeitdisposition im Großen für ausreichend (S. 257, Anm. 240; S. 273).</li>
-      <li>Je zwei gleich lange Einheiten zu einer übergeordneten zusammenfassen (S. 270). Das macht diese Seite.</li>
-      <li>SKYLINE2: Balkenhöhe = Dauer. SKYLINE: Balkenhöhe = 60 / Dauer, also Metronomwert (S. 245–253).</li>
-      <li>Vollbögen und Halbbögen von Hand einzeichnen, dann dirigierend mithören (S. 261, 293, 301).</li>
-    </ol>
-  </details>
-
-  <p class="source">Hörbeispiele: Hermann Gottschewski, Webseite zur Dissertation (fusehime.c.u-tokyo.ac.jp/gottschewski). Welte-Mignon-Rollen Reinecke Nr. 237, Saint-Saëns 807, Scharwenka 242, Pugno 548, Busoni 441. Eigene Analysen: Audiodateien der Stanford University Libraries zu den Welte-Mignon-Rollen 207, 2979, 419, 1275, 1208 und 2555 aus der Sammlung Denis Condon (SUPRA, purl.stanford.edu), abgerufen am 10.11.2026.</p>
 </main>
 
 <script>

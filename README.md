@@ -14,8 +14,14 @@ Site: https://pfefferniels.github.io/mechanica/
   scans. Holes are clickable; marks give distances, times and notes; the
   emulated bellows travel of bass and treble runs under the roll; playback of
   the emulated performance.
-- **Skyline-Werkstatt** (`/skyline/`): SKYLINE and SKYLINE2 after Gottschewski
-  for the recordings used in the workshop.
+- **Skyline-Werkstatt** (`/skyline/`): tap along, durations combined in pairs,
+  drawn as SKYLINE2 (duration) or SKYLINE (tempo), after Hermann Gottschewski,
+  *Die Interpretation als Kunstwerk*, Laaber 1996, S. 245–257 and 269 f. Its
+  recordings: Gottschewski's examples from the website for his dissertation
+  (fusehime.c.u-tokyo.ac.jp/gottschewski; Welte-Mignon rolls Reinecke 237,
+  Saint-Saëns 807, Scharwenka 242, Pugno 548, Busoni 441), and Stanford
+  University Libraries' audio for the Welte-Mignon rolls 207, 2979, 419, 1275,
+  1208 and 2555 (Denis Condon Collection, SUPRA), accessed 10 November 2026.
 
 ## Layout
 
