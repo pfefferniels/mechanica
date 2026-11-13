@@ -26,6 +26,8 @@ APP_LINKS = {
     "https://claude.ai/artifact/PDChzSTLwMAaFkL7jzapCu": "rollenlabor/",
     "https://claude.ai/artifact/1AfxLvyg6ofVCq7LFXYT9p": "skyline/",
 }
+# Clips cut from YouTube videos on slides whose caption does not name the video: blob id → video id.
+UNCAPTIONED_CLIPS = {"2a03a69a50620bab819b7f001a5d8573": "Ff8D17p-vdM"}
 APPS = {"rollenlabor": "Rollenlabor", "skyline": "Skyline-Werkstatt"}
 APP_SKIP = {"build", "README.md"}
 
@@ -67,6 +69,11 @@ def youtube_source(section):
     return {"data-youtube": ids.pop(), **({"data-start": seconds(*span.groups()[:2]), "data-end": seconds(*span.groups()[2:])} if span else {})}
 
 
+def uncaptioned_source(clip):
+    blob = BLOB.search(clip["data-video"])
+    return {"data-youtube": UNCAPTIONED_CLIPS[blob.group(1)]} if blob and blob.group(1) in UNCAPTIONED_CLIPS else None
+
+
 def embedded(img, source):
     [img.attrs.pop(name, None) for name in VIDEO_ATTRIBUTES]
     img.attrs.update({name: str(value) for name, value in source.items()})
@@ -74,8 +81,10 @@ def embedded(img, source):
 
 def with_youtube_player(section):
     clips = [img for img in section.find_all("img") if img.has_attr("data-video")]
-    source = youtube_source(section)
-    if source and len(clips) == 1:
+    if len(clips) != 1:
+        return
+    source = uncaptioned_source(clips[0]) or youtube_source(section)
+    if source:
         embedded(clips[0], source)
 
 
